@@ -57,7 +57,7 @@ pub fn main() {
     run_tests(&config);
 }
 
-pub fn parse_config(args: Vec<String> ) -> Config {
+pub fn parse_config(args: Vec<String>) -> Config {
 
     let groups : Vec<getopts::OptGroup> =
         vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
