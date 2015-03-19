@@ -1,0 +1,7 @@
+[package]
+name = "compiletest"
+version = "0.0.1"
+
+[lib]
+name = "compiletest"
+path = "src/compiletest.rs"
