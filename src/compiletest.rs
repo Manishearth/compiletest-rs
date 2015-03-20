@@ -46,16 +46,16 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
-pub fn main() {
-    let config = parse_config(env::args().collect());
+// pub fn main() {
+//     let config = parse_config(env::args().collect());
 
-    if config.valgrind_path.is_none() && config.force_valgrind {
-        panic!("Can't find Valgrind to run Valgrind tests");
-    }
+//     if config.valgrind_path.is_none() && config.force_valgrind {
+//         panic!("Can't find Valgrind to run Valgrind tests");
+//     }
 
-    log_config(&config);
-    run_tests(&config);
-}
+//     log_config(&config);
+//     run_tests(&config);
+// }
 
 pub fn parse_config(args: Vec<String>) -> Config {
 
