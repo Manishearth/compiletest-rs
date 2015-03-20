@@ -35,9 +35,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
-use common::Config;
+use common::{Config, Mode};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use util::logv;
+use std::borrow::ToOwned;
 
 pub mod procsrv;
 pub mod util;
@@ -45,17 +46,6 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
-
-// pub fn main() {
-//     let config = parse_config(env::args().collect());
-
-//     if config.valgrind_path.is_none() && config.force_valgrind {
-//         panic!("Can't find Valgrind to run Valgrind tests");
-//     }
-
-//     log_config(&config);
-//     run_tests(&config);
-// }
 
 pub fn parse_config(args: Vec<String>) -> Config {
 
@@ -162,6 +152,42 @@ pub fn parse_config(args: Vec<String>) -> Config {
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
+    }
+}
+
+static LD_LIBRARY_PATH: &'static str = env!("LD_LIBRARY_PATH");
+
+pub fn default_config() -> Config {
+    Config {
+        compile_lib_path: LD_LIBRARY_PATH.to_owned(),
+        run_lib_path: LD_LIBRARY_PATH.to_owned(),
+        rustc_path: PathBuf::new("/usr/local/bin/rustc"),
+        clang_path: None,
+        valgrind_path: None,
+        force_valgrind: false,
+        llvm_bin_path: None,
+        src_base: PathBuf::new("tests/run-pass"),
+        build_base: PathBuf::new("/tmp"),
+        aux_base: PathBuf::new("/home/tj/rust-lang/src/test/auxiliary"),
+        stage_id: "stage3".to_owned(),
+        mode: Mode::RunPass,
+        run_ignored: false,
+        filter: None,
+        logfile: None,
+        runtool: None,
+        host_rustcflags: None,
+        target_rustcflags: None,
+        jit: false,
+        target: "x86_64-unknown-linux-gnu".to_owned(),
+        host: "(none)".to_owned(),
+        gdb_version: None,
+        lldb_version: None,
+        android_cross_path: PathBuf::new("/not/a/real/path"),
+        adb_path: "(none)".to_owned(),
+        adb_test_dir: "(none)".to_owned(),
+        adb_device_status: false,
+        lldb_python_dir: None,
+        verbose: false
     }
 }
 
