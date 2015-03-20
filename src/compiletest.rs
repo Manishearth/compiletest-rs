@@ -25,7 +25,6 @@
 #![deny(warnings)]
 
 extern crate test;
-extern crate getopts;
 
 #[macro_use]
 extern crate log;
@@ -34,10 +33,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thunk::Thunk;
-use getopts::{optopt, optflag, reqopt};
 use common::{Config, Mode};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
-use util::logv;
 use std::borrow::ToOwned;
 
 pub mod procsrv;
@@ -46,114 +43,6 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
-
-pub fn parse_config(args: Vec<String>) -> Config {
-
-    let groups : Vec<getopts::OptGroup> =
-        vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
-          reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
-          reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
-          optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
-          optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
-          optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
-          optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
-          reqopt("", "src-base", "directory to scan for test files", "PATH"),
-          reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
-          reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
-          reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
-          reqopt("", "mode", "which sort of compile tests to run",
-                 "(compile-fail|parse-fail|run-fail|run-pass|run-pass-valgrind|pretty|debug-info)"),
-          optflag("", "ignored", "run tests marked as ignored"),
-          optopt("", "runtool", "supervisor program to run tests under \
-                                 (eg. emulator, valgrind)", "PROGRAM"),
-          optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
-          optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
-          optflag("", "verbose", "run tests verbosely, showing all output"),
-          optopt("", "logfile", "file to log test execution to", "FILE"),
-          optflag("", "jit", "run tests under the JIT"),
-          optopt("", "target", "the target to build for", "TARGET"),
-          optopt("", "host", "the host to build for", "HOST"),
-          optopt("", "gdb-version", "the version of GDB used", "VERSION STRING"),
-          optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING"),
-          optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
-          optopt("", "adb-path", "path to the android debugger", "PATH"),
-          optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
-          optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
-          optflag("h", "help", "show this message"));
-
-    assert!(!args.is_empty());
-    let argv0 = args[0].clone();
-    let args_ = args.tail();
-    if args[1] == "-h" || args[1] == "--help" {
-        let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
-        println!("");
-        panic!()
-    }
-
-    let matches =
-        &match getopts::getopts(args_, &groups) {
-          Ok(m) => m,
-          Err(f) => panic!("{:?}", f)
-        };
-
-    if matches.opt_present("h") || matches.opt_present("help") {
-        let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
-        println!("");
-        panic!()
-    }
-
-    fn opt_path(m: &getopts::Matches, nm: &str) -> PathBuf {
-        match m.opt_str(nm) {
-            Some(s) => PathBuf::new(&s),
-            None => panic!("no option (=path) found for {}", nm),
-        }
-    }
-
-    let filter = if !matches.free.is_empty() {
-        Some(matches.free[0].clone())
-    } else {
-        None
-    };
-
-    Config {
-        compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
-        run_lib_path: matches.opt_str("run-lib-path").unwrap(),
-        rustc_path: opt_path(matches, "rustc-path"),
-        clang_path: matches.opt_str("clang-path").map(|s| PathBuf::new(&s)),
-        valgrind_path: matches.opt_str("valgrind-path"),
-        force_valgrind: matches.opt_present("force-valgrind"),
-        llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| PathBuf::new(&s)),
-        src_base: opt_path(matches, "src-base"),
-        build_base: opt_path(matches, "build-base"),
-        aux_base: opt_path(matches, "aux-base"),
-        stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
-        run_ignored: matches.opt_present("ignored"),
-        filter: filter,
-        logfile: matches.opt_str("logfile").map(|s| PathBuf::new(&s)),
-        runtool: matches.opt_str("runtool"),
-        host_rustcflags: matches.opt_str("host-rustcflags"),
-        target_rustcflags: matches.opt_str("target-rustcflags"),
-        jit: matches.opt_present("jit"),
-        target: opt_str2(matches.opt_str("target")),
-        host: opt_str2(matches.opt_str("host")),
-        gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
-        lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
-        android_cross_path: opt_path(matches, "android-cross-path"),
-        adb_path: opt_str2(matches.opt_str("adb-path")),
-        adb_test_dir: format!("{}/{}",
-            opt_str2(matches.opt_str("adb-test-dir")),
-            opt_str2(matches.opt_str("target"))),
-        adb_device_status:
-            opt_str2(matches.opt_str("target")).contains("android") &&
-            "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
-            !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
-        lldb_python_dir: matches.opt_str("lldb-python-dir"),
-        verbose: matches.opt_present("verbose"),
-    }
-}
 
 static LD_LIBRARY_PATH: &'static str = env!("LD_LIBRARY_PATH");
 
@@ -182,46 +71,10 @@ pub fn default_config() -> Config {
         host: "(none)".to_owned(),
         gdb_version: None,
         lldb_version: None,
-        android_cross_path: PathBuf::new("/not/a/real/path"),
-        adb_path: "(none)".to_owned(),
-        adb_test_dir: "(none)".to_owned(),
-        adb_device_status: false,
+        android: None,
         lldb_python_dir: None,
         verbose: false
     }
-}
-
-pub fn log_config(config: &Config) {
-    let c = config;
-    logv(c, format!("configuration:"));
-    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
-    logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
-    logv(c, format!("build_base: {:?}", config.build_base.display()));
-    logv(c, format!("stage_id: {}", config.stage_id));
-    logv(c, format!("mode: {}", config.mode));
-    logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}",
-                    opt_str(&config.filter
-                                   .as_ref()
-                                   .map(|re| re.to_string()))));
-    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}",
-                    opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}",
-                    opt_str(&config.target_rustcflags)));
-    logv(c, format!("jit: {}", config.jit));
-    logv(c, format!("target: {}", config.target));
-    logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {:?}",
-                    config.android_cross_path.display()));
-    logv(c, format!("adb_path: {:?}", config.adb_path));
-    logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
-    logv(c, format!("adb_device_status: {}",
-                    config.adb_device_status));
-    logv(c, format!("verbose: {}", config.verbose));
-    logv(c, format!("\n"));
 }
 
 pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
@@ -386,6 +239,7 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
     })
 }
 
+#[allow(dead_code)]
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
     match full_version_line {
         Some(ref full_version_line)
@@ -415,6 +269,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
     // Extract the major LLDB version from the given version string.
     // LLDB version strings are different for Apple and non-Apple platforms.

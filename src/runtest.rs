@@ -36,8 +36,9 @@ pub fn run(config: Config, testfile: &Path) {
     match &*config.target {
 
         "arm-linux-androideabi" | "aarch64-linux-android" => {
-            if !config.adb_device_status {
-                panic!("android device not available");
+            match config.android {
+                Some(ref android) if android.adb_device_status => { /* Ok */ },
+                _ => panic!("android device not available")
             }
         }
 
@@ -379,6 +380,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         "arm-linux-androideabi" | "aarch64-linux-android" => {
 
             cmds = cmds.replace("run", "continue");
+            let android_config = match config.android {
+                Some(ref android_config) => android_config,
+                None => panic!("Android config not found")
+            };
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
@@ -405,19 +410,19 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
 
             procsrv::run("",
-                         &config.adb_path,
+                         &android_config.adb_path,
                          None,
                          &[
                             "push".to_string(),
                             exe_file.to_str().unwrap().to_string(),
-                            config.adb_test_dir.clone()
+                            android_config.adb_test_dir.clone()
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
 
             procsrv::run("",
-                         &config.adb_path,
+                         &android_config.adb_path,
                          None,
                          &[
                             "forward".to_string(),
@@ -426,19 +431,19 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; \
                                    gdbserver{} :5039 {}/{}",
-                                  config.adb_test_dir.clone(),
+                                  android_config.adb_test_dir.clone(),
                                   if config.target.contains("aarch64")
                                   {"64"} else {""},
-                                  config.adb_test_dir.clone(),
+                                  android_config.adb_test_dir.clone(),
                                   exe_file.file_name().unwrap().to_str()
                                           .unwrap());
 
             let mut process = procsrv::run_background("",
-                                                      &config.adb_path
+                                                      &android_config.adb_path
                                                             ,
                                                       None,
                                                       &[
@@ -448,7 +453,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                       vec!(("".to_string(),
                                                             "".to_string())),
                                                       Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
             loop {
                 //waiting 1 second for gdbserver start
                 #[allow(deprecated)]
@@ -461,7 +466,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 }
             }
 
-            let tool_path = match config.android_cross_path.to_str() {
+            //let android_config = config.android.unwrap();
+            let tool_path = match android_config.android_cross_path.to_str() {
                 Some(x) => x.to_string(),
                 None => fatal("cannot find android cross path")
             };
@@ -1491,6 +1497,10 @@ fn _arm_exec_compiled_test(config: &Config,
     let cmdline = make_cmdline("",
                                &args.prog,
                                &args.args);
+    let android_config = match config.android {
+        Some(ref c) => c,
+        None => panic!("No android config found")
+    };
 
     // get bare program string
     let mut tvec: Vec<String> = args.prog
@@ -1501,16 +1511,16 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // copy to target
     let copy_result = procsrv::run("",
-                                   &config.adb_path,
+                                   &android_config.adb_path,
                                    None,
                                    &[
                                     "push".to_string(),
                                     args.prog.clone(),
-                                    config.adb_test_dir.clone()
+                                    android_config.adb_test_dir.clone()
                                    ],
                                    vec!(("".to_string(), "".to_string())),
                                    Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", config.adb_path));
+        .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
     if config.verbose {
         println!("push ({}) {} {} {}",
@@ -1529,34 +1539,34 @@ fn _arm_exec_compiled_test(config: &Config,
     for (key, val) in env {
         runargs.push(format!("{}={}", key, val));
     }
-    runargs.push(format!("{}/../adb_run_wrapper.sh", config.adb_test_dir));
-    runargs.push(format!("{}", config.adb_test_dir));
+    runargs.push(format!("{}/../adb_run_wrapper.sh", android_config.adb_test_dir));
+    runargs.push(format!("{}", android_config.adb_test_dir));
     runargs.push(format!("{}", prog_short));
 
     for tv in &args.args {
         runargs.push(tv.to_string());
     }
     procsrv::run("",
-                 &config.adb_path,
+                 &android_config.adb_path,
                  None,
                  &runargs,
                  vec!(("".to_string(), "".to_string())), Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", config.adb_path));
+        .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
     // get exitcode of result
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.exitcode", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.exitcode", android_config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
         procsrv::run("",
-                     &config.adb_path,
+                     &android_config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", config.adb_path));
+        .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
     let mut exitcode: i32 = 0;
     for c in exitcode_out.chars() {
@@ -1571,31 +1581,31 @@ fn _arm_exec_compiled_test(config: &Config,
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.stdout", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stdout", android_config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stdout_out, err: _, status: _ } =
         procsrv::run("",
-                     &config.adb_path,
+                     &android_config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", config.adb_path));
+        .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
     // get stderr of result
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.stderr", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stderr", android_config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stderr_out, err: _, status: _ } =
         procsrv::run("",
-                     &config.adb_path,
+                     &android_config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", config.adb_path));
+        .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
     dump_output(config,
                 testfile,
@@ -1613,25 +1623,30 @@ fn _arm_exec_compiled_test(config: &Config,
 fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
+    let android_config = match config.android {
+        Some(ref android_config) => android_config,
+        None => panic!("Android config not found")
+    };
+
     let dirs = fs::read_dir(&tdir).unwrap();
     for file in dirs {
         let file = file.unwrap().path();
         if file.extension().and_then(|s| s.to_str()) == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let copy_result = procsrv::run("",
-                                           &config.adb_path,
+                                           &android_config.adb_path,
                                            None,
                                            &[
                                             "push".to_string(),
                                             file.to_str()
                                                 .unwrap()
                                                 .to_string(),
-                                            config.adb_test_dir.to_string(),
+                                            android_config.adb_test_dir.to_string(),
                                            ],
                                            vec!(("".to_string(),
                                                  "".to_string())),
                                            Some("".to_string()))
-                .expect(&format!("failed to exec `{}`", config.adb_path));
+                .expect(&format!("failed to exec `{}`", android_config.adb_path));
 
             if config.verbose {
                 println!("push ({}) {:?} {} {}",

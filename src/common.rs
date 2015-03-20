@@ -133,6 +133,18 @@ pub struct Config {
     // Version of LLDB
     pub lldb_version: Option<String>,
 
+    // If present, holds all the necessary parameters for android testing
+    pub android: Option<AndroidConfig>,
+
+    // the path containing LLDB's Python module
+    pub lldb_python_dir: Option<String>,
+
+    // Explain what's going on
+    pub verbose: bool
+}
+
+#[derive(Clone)]
+pub struct AndroidConfig {
     // Path to the android tools
     pub android_cross_path: PathBuf,
 
@@ -143,11 +155,5 @@ pub struct Config {
     pub adb_test_dir: String,
 
     // status whether android device available or not
-    pub adb_device_status: bool,
-
-    // the path containing LLDB's Python module
-    pub lldb_python_dir: Option<String>,
-
-    // Explain what's going on
-    pub verbose: bool
+    pub adb_device_status: bool
 }
