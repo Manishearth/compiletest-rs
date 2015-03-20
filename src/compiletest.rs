@@ -161,7 +161,7 @@ pub fn default_config() -> Config {
     Config {
         compile_lib_path: LD_LIBRARY_PATH.to_owned(),
         run_lib_path: LD_LIBRARY_PATH.to_owned(),
-        rustc_path: PathBuf::new("/usr/local/bin/rustc"),
+        rustc_path: PathBuf::new("rustc"),
         clang_path: None,
         valgrind_path: None,
         force_valgrind: false,
@@ -240,12 +240,9 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
-        match config.mode {
-            DebugInfoGdb => {
-                println!("{} debug-info test uses tcp 5039 port.\
+        if config.mode == DebugInfoGdb {
+            println!("{} debug-info test uses tcp 5039 port.\
                          please reserve it", config.target);
-            }
-            _ =>{}
         }
 
         // android debug-info test uses remote debugger
