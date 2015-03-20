@@ -304,24 +304,21 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
           Pretty => vec!(".rs".to_string()),
           _ => vec!(".rc".to_string(), ".rs".to_string())
         };
+
     let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
     let name = testfile.file_name().unwrap().to_str().unwrap();
 
-    let mut valid = false;
-
     for ext in &valid_extensions {
         if name.ends_with(ext) {
-            valid = true;
+            for pre in &invalid_prefixes {
+                if name.starts_with(pre) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
-
-    for pre in &invalid_prefixes {
-        if name.starts_with(pre) {
-            valid = false;
-        }
-    }
-
-    return valid;
+    false
 }
 
 pub fn make_test<F>(config: &Config, testfile: &Path, f: F) -> test::TestDescAndFn where
