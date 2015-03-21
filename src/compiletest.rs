@@ -20,7 +20,6 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(path_ext)]
-#![feature(str_char)]
 
 #![deny(warnings)]
 
@@ -74,20 +73,6 @@ pub fn default_config() -> Config {
         android: None,
         lldb_python_dir: None,
         verbose: false
-    }
-}
-
-pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
-    match *maybestr {
-        None => "(none)",
-        Some(ref s) => s,
-    }
-}
-
-pub fn opt_str2(maybestr: Option<String>) -> String {
-    match maybestr {
-        None => "(none)".to_string(),
-        Some(s) => s,
     }
 }
 
@@ -177,24 +162,15 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          Pretty => vec!(".rs".to_string()),
-          _ => vec!(".rc".to_string(), ".rs".to_string())
+          Pretty => vec!(".rs".to_owned()),
+          _ => vec!(".rc".to_owned(), ".rs".to_owned())
         };
 
-    let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
+    let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
     let name = testfile.file_name().unwrap().to_str().unwrap();
 
-    for ext in &valid_extensions {
-        if name.ends_with(ext) {
-            for pre in &invalid_prefixes {
-                if name.starts_with(pre) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
-    false
+    valid_extensions.iter().any(|ext| name.ends_with(ext)) &&
+        !invalid_prefixes.iter().any(|pre| name.starts_with(pre))
 }
 
 pub fn make_test<F>(config: &Config, testfile: &Path, f: F) -> test::TestDescAndFn where
@@ -259,7 +235,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
                    full_version_line.char_at(pos + 3).is_digit(10) {
                     continue
                 }
-                return Some(full_version_line[pos..pos+3].to_string());
+                return Some(full_version_line[pos..pos+3].to_owned());
             }
             println!("Could not extract GDB version from line '{}'",
                      full_version_line);
