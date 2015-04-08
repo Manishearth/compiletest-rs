@@ -26,7 +26,7 @@ pub struct TestProps {
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
-    // pretty-printed
+    // pretty-prisizeed
     pub pp_exact: Option<PathBuf>,
     // Modules from aux directory that should be compiled
     pub aux_builds: Vec<String> ,
@@ -243,13 +243,10 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
-        if ln.starts_with("fn") ||
-                ln.starts_with("mod") {
+        if ln.starts_with("fn") || ln.starts_with("mod") {
             return true;
-        } else {
-            if !(it(ln.trim())) {
-                return false;
-            }
+        } else if !(it(ln.trim())) {
+            return false;
         }
     }
     return true;
@@ -324,10 +321,10 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(PathBuf::new(&s)),
+      Some(s) => Some(PathBuf::from(&s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(|s| PathBuf::new(s))
+            testfile.file_name().map(|s| PathBuf::from(s))
         } else {
             None
         }
@@ -339,20 +336,18 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive)
 }
 
-pub fn parse_name_value_directive(line: &str, directive: &str)
-                                  -> Option<String> {
+pub fn parse_name_value_directive(line: &str, directive: &str) -> Option<String> {
     let keycolon = format!("{}:", directive);
-    match line.find(&keycolon) {
-        Some(colon) => {
-            let value = line[(colon + keycolon.len()) .. line.len()].to_string();
-            debug!("{}: {}", directive, value);
-            Some(value)
-        }
-        None => None
+    if let Some(colon) = line.find(&keycolon) {
+        let value = line[(colon + keycolon.len()) .. line.len()].to_string();
+        debug!("{}: {}", directive, value);
+        Some(value)
+    } else {
+        None
     }
 }
 
-pub fn gdb_version_to_int(version_string: &str) -> int {
+pub fn gdb_version_to_int(version_string: &str) -> isize {
     let error_string = format!(
         "Encountered GDB version string with unexpected format: {}",
         version_string);
@@ -364,17 +359,17 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
         panic!("{}", error_string);
     }
 
-    let major: int = components[0].parse().ok().expect(&error_string);
-    let minor: int = components[1].parse().ok().expect(&error_string);
+    let major: isize = components[0].parse().ok().expect(&error_string);
+    let minor: isize = components[1].parse().ok().expect(&error_string);
 
     return major * 1000 + minor;
 }
 
-pub fn lldb_version_to_int(version_string: &str) -> int {
+pub fn lldb_version_to_int(version_string: &str) -> isize {
     let error_string = format!(
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
     let error_string = error_string;
-    let major: int = version_string.parse().ok().expect(&error_string);
+    let major: isize = version_string.parse().ok().expect(&error_string);
     return major;
 }

@@ -12,14 +12,12 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(int_uint)]
-#![feature(old_io)]
-#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(unboxed_closures)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(path_ext)]
+#![feature(str_char)]
 
 #![deny(warnings)]
 
@@ -49,14 +47,14 @@ pub fn default_config() -> Config {
     Config {
         compile_lib_path: LD_LIBRARY_PATH.to_owned(),
         run_lib_path: LD_LIBRARY_PATH.to_owned(),
-        rustc_path: PathBuf::new("rustc"),
+        rustc_path: PathBuf::from("rustc"),
         clang_path: None,
         valgrind_path: None,
         force_valgrind: false,
         llvm_bin_path: None,
-        src_base: PathBuf::new("tests/run-pass"),
-        build_base: PathBuf::new("/tmp"),
-        aux_base: PathBuf::new("/home/tj/rust-lang/src/test/auxiliary"),
+        src_base: PathBuf::from("tests/run-pass"),
+        build_base: PathBuf::from("/tmp"),
+        aux_base: PathBuf::from("/home/tj/rust-lang/src/test/auxiliary"),
         stage_id: "stage3".to_owned(),
         mode: Mode::RunPass,
         run_ignored: false,
@@ -104,11 +102,11 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    #[allow(deprecated)]
-    fn raise_fd_limit() {
-        std::old_io::test::raise_fd_limit();
-    }
-    raise_fd_limit();
+    // #[allow(deprecated)]
+    // fn raise_fd_limit() {
+    //     std::old_io::test::raise_fd_limit();
+    // }
+    // raise_fd_limit();
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
@@ -202,9 +200,9 @@ pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
 pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     let testfile = testfile.to_path_buf();
-    test::DynTestFn(Thunk::new(move || {
+    test::DynTestFn(Box::new(move || {
         runtest::run(config, &testfile)
-    }))
+    }) as Thunk)
 }
 
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
