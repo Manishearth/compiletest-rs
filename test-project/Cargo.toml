@@ -6,4 +6,4 @@ authors = ["Thomas Jespersen <laumann.thomas@gmail.com>"]
 
 
 [dependencies.compiletest]
-path = "../compiletest"
+path = ".."
