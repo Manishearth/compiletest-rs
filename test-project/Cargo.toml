@@ -1,0 +1,9 @@
+[package]
+
+name = "testp"
+version = "0.0.1"
+authors = ["Thomas Jespersen <laumann.thomas@gmail.com>"]
+
+
+[dependencies.compiletest]
+path = "../compiletest"
