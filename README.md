@@ -58,6 +58,12 @@ This is useful (and necessary) for library development. Note that other
 secondary library dependencies may have their build artifacts placed in
 different (non-obvious) locations and these locations must also be added.
 
+Example
+-------
+See the `test-project` folder for a complete working example using the
+`compiletest-rs` utility. Simply `cd test-project` and `cargo test` to see the
+tests run.
+
 TODO
 ----
  - The `run-pass` mode is strictly not necessary since it's baked right into
