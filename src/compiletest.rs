@@ -20,6 +20,7 @@
 #![feature(str_char)]
 
 #![deny(warnings)]
+#![deny(unused_imports)]
 
 extern crate test;
 
