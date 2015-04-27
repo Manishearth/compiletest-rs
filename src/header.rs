@@ -108,36 +108,30 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pretty_compare_only = parse_pretty_compare_only(ln);
         }
 
-        match parse_aux_build(ln) {
-            Some(ab) => { aux_builds.push(ab); }
-            None => {}
+        if let Some(ab) = parse_aux_build(ln) {
+            aux_builds.push(ab);
         }
 
-        match parse_exec_env(ln) {
-            Some(ee) => { exec_env.push(ee); }
-            None => {}
+        if let Some(ee) = parse_exec_env(ln) {
+            exec_env.push(ee);
         }
 
-        match parse_check_line(ln) {
-            Some(cl) => check_lines.push(cl),
-            None => ()
-        };
+        if let Some(cl) = parse_check_line(ln) {
+            check_lines.push(cl);
+        }
 
-        match parse_forbid_output(ln) {
-            Some(of) => forbid_output.push(of),
-            None => (),
+        if let Some(of) = parse_forbid_output(ln) {
+            forbid_output.push(of);
         }
 
         true
     });
 
     for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_TASKS"] {
-        match env::var(key) {
-            Ok(val) =>
-                if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
+        if let Ok(val) = env::var(key) {
+            if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
                     exec_env.push((key.to_string(), val))
-                },
-            Err(..) => {}
+            }
         }
     }
 
@@ -249,7 +243,7 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
@@ -304,31 +298,31 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, "exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
-                                      .splitn(1, '=')
-                                      .map(|s| s.to_string())
-                                      .collect();
+            .splitn(1, '=')
+            .map(|s| s.to_string())
+            .collect();
 
         match strs.len() {
-          1 => (strs.pop().unwrap(), "".to_string()),
-          2 => {
-              let end = strs.pop().unwrap();
-              (strs.pop().unwrap(), end)
-          }
-          n => panic!("Expected 1 or 2 strings, not {}", n)
+            1 => (strs.pop().unwrap(), "".to_string()),
+            2 => {
+                let end = strs.pop().unwrap();
+                (strs.pop().unwrap(), end)
+            }
+            n => panic!("Expected 1 or 2 strings, not {}", n)
         }
     })
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(PathBuf::from(&s)),
-      None => {
-        if parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(|s| PathBuf::from(s))
-        } else {
-            None
+        Some(s) => Some(PathBuf::from(&s)),
+        None => {
+            if parse_name_directive(line, "pp-exact") {
+                testfile.file_name().map(|s| PathBuf::from(s))
+            } else {
+                None
+            }
         }
-      }
     }
 }
 
@@ -362,7 +356,7 @@ pub fn gdb_version_to_int(version_string: &str) -> isize {
     let major: isize = components[0].parse().ok().expect(&error_string);
     let minor: isize = components[1].parse().ok().expect(&error_string);
 
-    return major * 1000 + minor;
+    major * 1000 + minor
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {
@@ -370,6 +364,6 @@ pub fn lldb_version_to_int(version_string: &str) -> isize {
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
     let error_string = error_string;
-    let major: isize = version_string.parse().ok().expect(&error_string);
-    return major;
+
+    version_string.parse().ok().expect(&error_string)
 }

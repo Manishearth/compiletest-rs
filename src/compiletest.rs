@@ -55,7 +55,7 @@ pub fn default_config() -> Config {
         llvm_bin_path: None,
         src_base: PathBuf::from("tests/run-pass"),
         build_base: PathBuf::from("/tmp"),
-        aux_base: PathBuf::from("/home/tj/rust-lang/src/test/auxiliary"),
+        aux_base: None,
         stage_id: "stage3".to_owned(),
         mode: Mode::RunPass,
         run_ignored: false,
