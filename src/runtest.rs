@@ -296,10 +296,10 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                             aux_dir.to_str().unwrap().to_string());
         args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
         args.extend(split_maybe_args(&props.compile_flags).into_iter());
-        return ProcArgs {
+        ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
             args: args,
-        };
+        }
     }
 
     fn compare_source(expected: &str, actual: &str) {
@@ -345,10 +345,10 @@ actual:\n\
         args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
         args.extend(split_maybe_args(&props.compile_flags).into_iter());
         // FIXME (#9639): This needs to handle non-utf8 paths
-        return ProcArgs {
+        ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
             args: args,
-        };
+        }
     }
 }
 
@@ -624,7 +624,7 @@ fn find_rust_src_root(config: &Config) -> Option<PathBuf> {
         }
     }
 
-    return None;
+    None
 }
 
 fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) {
@@ -648,15 +648,12 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     let exe_file = make_exe_name(config, testfile);
 
-    match config.lldb_version {
-        Some(ref version) => {
-            println!("NOTE: compiletest thinks it is using LLDB version {}",
-                     version);
-        }
-        _ => {
-            println!("NOTE: compiletest does not know which version of \
-                      LLDB it is using");
-        }
+    if let Some(ref version) = config.lldb_version {
+        println!("NOTE: compiletest thinks it is using LLDB version {}",
+                 version);
+    } else {
+        println!("NOTE: compiletest does not know which version of \
+                  LLDB it is using");
     }
 
     // Parse debugger commands etc from test files
@@ -751,12 +748,12 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         };
 
         dump_output(config, test_executable, &out, &err);
-        return ProcRes {
+        ProcRes {
             status: Status::Normal(status),
             stdout: out,
             stderr: err,
             cmdline: format!("{:?}", cmd)
-        };
+        }
     }
 }
 
@@ -1025,8 +1022,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 
 fn is_compiler_error_or_warning(line: &str) -> bool {
     let mut i = 0;
-    return
-        scan_until_char(line, ':', &mut i) &&
+    scan_until_char(line, ':', &mut i) &&
         scan_char(line, ':', &mut i) &&
         scan_integer(line, &mut i) &&
         scan_char(line, ':', &mut i) &&
@@ -1038,7 +1034,7 @@ fn is_compiler_error_or_warning(line: &str) -> bool {
         scan_integer(line, &mut i) &&
         scan_char(line, ' ', &mut i) &&
         (scan_string(line, "error", &mut i) ||
-         scan_string(line, "warning", &mut i));
+         scan_string(line, "warning", &mut i))
 }
 
 fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
@@ -1050,7 +1046,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
         return false;
     }
     *idx = opt.unwrap();
-    return true;
+    true
 }
 
 fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
@@ -1062,7 +1058,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
         return false;
     }
     *idx += ch.len_utf8();
-    return true;
+    true
 }
 
 fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
@@ -1078,7 +1074,7 @@ fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
         return false;
     }
     *idx = i;
-    return true;
+    true
 }
 
 fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
@@ -1095,7 +1091,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
         }
     }
     *idx = haystack_i;
-    return true;
+    true
 }
 
 struct ProcArgs {
@@ -1263,8 +1259,8 @@ fn compose_and_run(config: &Config, testfile: &Path,
                    lib_path: &str,
                    aux_path: Option<&str>,
                    input: Option<String>) -> ProcRes {
-    return program_output(config, testfile, lib_path,
-                          prog, aux_path, args, procenv, input);
+    program_output(config, testfile, lib_path,
+                   prog, aux_path, args, procenv, input)
 }
 
 enum TargetLocation {
@@ -1313,10 +1309,10 @@ fn make_compile_args<F>(config: &Config,
         args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
     }
     args.extend(split_maybe_args(&props.compile_flags).into_iter());
-    return ProcArgs {
+    ProcArgs {
         prog: config.rustc_path.to_str().unwrap().to_string(),
         args: args,
-    };
+    }
 }
 
 fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> PathBuf {
@@ -1336,8 +1332,7 @@ fn make_exe_name(config: &Config, testfile: &Path) -> PathBuf {
     f
 }
 
-fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
-   ProcArgs {
+fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) -> ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
     let mut args = split_maybe_args(&config.runtool);
@@ -1350,10 +1345,10 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     args.extend(split_maybe_args(&props.run_flags).into_iter());
 
     let prog = args.remove(0);
-    return ProcArgs {
+    ProcArgs {
         prog: prog,
         args: args,
-    };
+    }
 }
 
 fn split_maybe_args(argstr: &Option<String>) -> Vec<String> {
@@ -1396,12 +1391,12 @@ fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: String
                      env,
                      input).expect(&format!("failed to exec `{}`", prog));
     dump_output(config, testfile, &out, &err);
-    return ProcRes {
+    ProcRes {
         status: Status::Normal(status),
         stdout: out,
         stderr: err,
         cmdline: cmdline,
-    };
+    }
 }
 
 fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
