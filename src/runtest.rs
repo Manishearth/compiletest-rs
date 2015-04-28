@@ -1199,7 +1199,10 @@ fn compose_and_run_compiler(
     let extra_link_args = vec!("-L".to_string(), aux_dir.to_str().unwrap().to_string());
 
     for rel_ab in &props.aux_builds {
-        let abs_ab = config.aux_base.join(rel_ab);
+        let abs_ab = match config.aux_base {
+            Some(ref aux_base) => aux_base.join(rel_ab),
+            None => PathBuf::new()
+        };
         let aux_props = header::load_props(&abs_ab);
         let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
