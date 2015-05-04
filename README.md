@@ -5,7 +5,8 @@ This project is an attempt at extracting the `compiletest` utility from the Rust
 compiler.
 
 The `compiletest` utility is useful for library and plugin developers, who want
-to include test programs that shol
+to include test programs that should fail to compile, issue warnings or
+otherwise produce compile-time output.
 
 
 To use in your project
