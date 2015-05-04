@@ -13,7 +13,7 @@ To use in your project
 To use `compiletest-rs` in your application, add the following to `Cargo.toml`
 
 ```
-[dependencies.compiletest]
+[dev-dependencies.compiletest]
 git = "https://github.com/laumann/compiletest-rs.git"
 ```
 
