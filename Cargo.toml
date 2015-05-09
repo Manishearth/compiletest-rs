@@ -1,6 +1,9 @@
 [package]
 name = "compiletest"
 version = "0.0.1"
+description = "The compiletest utility from the Rust compiler as a standalone testing harness"
+license = "Apache-2.0/MIT" # Same as rustc
+repository = "https://github.com/laumann/compiletest-rs"
 
 [lib]
 name = "compiletest"
