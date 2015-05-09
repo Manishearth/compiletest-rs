@@ -14,15 +14,15 @@ To use in your project
 To use `compiletest-rs` in your application, add the following to `Cargo.toml`
 
 ```
-[dev-dependencies.compiletest]
-git = "https://github.com/laumann/compiletest-rs.git"
+[dev-dependencies]
+compiletest_rs = "*"
 ```
 
 Create a `tests` folder in the root folder of your project. Create a test file
 with something like the following:
 
 ```rust
-extern crate compiletest;
+extern crate compiletest_rs as compiletest;
 
 use std::path::PathBuf;
 
