@@ -1,5 +1,5 @@
 [package]
-name = "compiletest"
+name = "compiletest_rs"
 version = "0.0.1"
 authors = [ "The Rust Project Developers"
           , "Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>"
@@ -9,5 +9,5 @@ license = "Apache-2.0/MIT" # Same as rustc
 repository = "https://github.com/laumann/compiletest-rs"
 
 [lib]
-name = "compiletest"
+name = "compiletest_rs"
 path = "src/compiletest.rs"
