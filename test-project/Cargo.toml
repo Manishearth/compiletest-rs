@@ -5,5 +5,5 @@ version = "0.0.1"
 authors = ["Thomas Jespersen <laumann.thomas@gmail.com>"]
 
 
-[dev-dependencies.compiletest]
+[dev-dependencies.compiletest_rs]
 path = ".."
