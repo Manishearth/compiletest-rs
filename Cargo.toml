@@ -8,6 +8,8 @@ authors = [ "The Rust Project Developers"
 description = "The compiletest utility from the Rust compiler as a standalone testing harness"
 license = "Apache-2.0/MIT" # Same as rustc
 repository = "https://github.com/laumann/compiletest-rs"
+keywords = ["compiletest", "test", "plugin"]
+readme = "README.md"
 
 [lib]
 name = "compiletest_rs"
