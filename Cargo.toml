@@ -1,8 +1,9 @@
 [package]
 name = "compiletest_rs"
-version = "0.0.1"
+version = "0.0.2"
 authors = [ "The Rust Project Developers"
           , "Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>"
+          , "Manish Goregaokar <manishsmail@gmail.com>"
           ]
 description = "The compiletest utility from the Rust compiler as a standalone testing harness"
 license = "Apache-2.0/MIT" # Same as rustc
