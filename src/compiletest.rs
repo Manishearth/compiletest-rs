@@ -23,6 +23,7 @@
 #![deny(unused_imports)]
 
 extern crate test;
+extern crate rustc;
 
 #[macro_use]
 extern crate log;
@@ -34,6 +35,7 @@ use std::thunk::Thunk;
 use common::{Config, Mode};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use std::borrow::ToOwned;
+use rustc::session::config::host_triple;
 
 pub mod procsrv;
 pub mod util;
@@ -65,7 +67,7 @@ pub fn default_config() -> Config {
         host_rustcflags: None,
         target_rustcflags: None,
         jit: false,
-        target: "x86_64-unknown-linux-gnu".to_owned(),
+        target: host_triple().to_owned(),
         host: "(none)".to_owned(),
         gdb_version: None,
         lldb_version: None,
