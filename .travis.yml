@@ -1,4 +1,5 @@
 language: rust
+rust: nightly
 script: cd test-project && cargo test
 
 notifications:
