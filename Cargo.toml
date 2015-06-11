@@ -1,6 +1,6 @@
 [package]
 name = "compiletest_rs"
-version = "0.0.4"
+version = "0.0.5"
 authors = [ "The Rust Project Developers"
           , "Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>"
           , "Manish Goregaokar <manishsmail@gmail.com>"
