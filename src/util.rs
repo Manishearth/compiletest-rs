@@ -13,16 +13,34 @@ use common::Config;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("android", "android"),
+    ("bitrig", "bitrig"),
+    ("darwin", "macos"),
+    ("dragonfly", "dragonfly"),
+    ("freebsd", "freebsd"),
+    ("ios", "ios"),
+    ("linux", "linux"),
     ("mingw32", "windows"),
+    ("openbsd", "openbsd"),
     ("win32", "windows"),
     ("windows", "windows"),
-    ("darwin", "macos"),
-    ("android", "android"),
-    ("linux", "linux"),
-    ("freebsd", "freebsd"),
-    ("dragonfly", "dragonfly"),
-    ("bitrig", "bitrig"),
-    ("openbsd", "openbsd"),
+];
+
+const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("aarch64", "aarch64"),
+    ("amd64", "x86_64"),
+    ("arm", "arm"),
+    ("arm64", "aarch64"),
+    ("hexagon", "hexagon"),
+    ("i386", "x86"),
+    ("i686", "x86"),
+    ("mips", "mips"),
+    ("msp430", "msp430"),
+    ("powerpc", "powerpc"),
+    ("s390x", "systemz"),
+    ("sparc", "sparc"),
+    ("x86_64", "x86_64"),
+    ("xcore", "xcore"),
 ];
 
 pub fn get_os(triple: &str) -> &'static str {
@@ -32,6 +50,18 @@ pub fn get_os(triple: &str) -> &'static str {
         }
     }
     panic!("Cannot determine OS from triple");
+}
+pub fn get_arch(triple: &str) -> &'static str {
+    for &(triple_arch, arch) in ARCH_TABLE {
+        if triple.contains(triple_arch) {
+            return arch
+        }
+    }
+    panic!("Cannot determine Architecture from triple");
+}
+
+pub fn get_env(triple: &str) -> Option<&str> {
+    triple.split('-').nth(3)
 }
 
 pub fn make_new_path(path: &str) -> String {
