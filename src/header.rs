@@ -26,7 +26,7 @@ pub struct TestProps {
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
-    // pretty-prisizeed
+    // pretty-printed
     pub pp_exact: Option<PathBuf>,
     // Modules from aux directory that should be compiled
     pub aux_builds: Vec<String> ,
@@ -40,8 +40,8 @@ pub struct TestProps {
     pub check_stdout: bool,
     // Don't force a --crate-type=dylib flag on the command line
     pub no_prefer_dynamic: bool,
-    // Don't run --pretty expanded when running pretty printing tests
-    pub no_pretty_expanded: bool,
+    // Run --pretty expanded when running pretty printing tests
+    pub pretty_expanded: bool,
     // Which pretty mode are we testing with, default to 'normal'
     pub pretty_mode: String,
     // Only compare pretty output and don't try compiling
@@ -62,7 +62,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
-    let mut no_pretty_expanded = false;
+    let mut pretty_expanded = false;
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
     let mut forbid_output = Vec::new();
@@ -96,8 +96,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
             no_prefer_dynamic = parse_no_prefer_dynamic(ln);
         }
 
-        if !no_pretty_expanded {
-            no_pretty_expanded = parse_no_pretty_expanded(ln);
+        if !pretty_expanded {
+            pretty_expanded = parse_pretty_expanded(ln);
         }
 
         if pretty_mode.is_none() {
@@ -108,30 +108,36 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pretty_compare_only = parse_pretty_compare_only(ln);
         }
 
-        if let Some(ab) = parse_aux_build(ln) {
-            aux_builds.push(ab);
+        match parse_aux_build(ln) {
+            Some(ab) => { aux_builds.push(ab); }
+            None => {}
         }
 
-        if let Some(ee) = parse_exec_env(ln) {
-            exec_env.push(ee);
+        match parse_exec_env(ln) {
+            Some(ee) => { exec_env.push(ee); }
+            None => {}
         }
 
-        if let Some(cl) = parse_check_line(ln) {
-            check_lines.push(cl);
-        }
+        match parse_check_line(ln) {
+            Some(cl) => check_lines.push(cl),
+            None => ()
+        };
 
-        if let Some(of) = parse_forbid_output(ln) {
-            forbid_output.push(of);
+        match parse_forbid_output(ln) {
+            Some(of) => forbid_output.push(of),
+            None => (),
         }
 
         true
     });
 
-    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_TASKS"] {
-        if let Ok(val) = env::var(key) {
-            if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
+    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+        match env::var(key) {
+            Ok(val) =>
+                if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
                     exec_env.push((key.to_string(), val))
-            }
+                },
+            Err(..) => {}
         }
     }
 
@@ -146,7 +152,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
-        no_pretty_expanded: no_pretty_expanded,
+        pretty_expanded: pretty_expanded,
         pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
@@ -157,9 +163,15 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     fn ignore_target(config: &Config) -> String {
         format!("ignore-{}", util::get_os(&config.target))
     }
+    fn ignore_architecture(config: &Config) -> String {
+        format!("ignore-{}", util::get_arch(&config.target))
+    }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
                 config.stage_id.split('-').next().unwrap())
+    }
+    fn ignore_env(config: &Config) -> String {
+        format!("ignore-{}", util::get_env(&config.target).unwrap_or("<unknown>"))
     }
     fn ignore_gdb(config: &Config, line: &str) -> bool {
         if config.mode != common::DebugInfoGdb {
@@ -220,7 +232,9 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     let val = iter_header(testfile, &mut |ln| {
         !parse_name_directive(ln, "ignore-test") &&
         !parse_name_directive(ln, &ignore_target(config)) &&
+        !parse_name_directive(ln, &ignore_architecture(config)) &&
         !parse_name_directive(ln, &ignore_stage(config)) &&
+        !parse_name_directive(ln, &ignore_env(config)) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
         !ignore_gdb(config, ln) &&
@@ -237,13 +251,16 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
-        if ln.starts_with("fn") || ln.starts_with("mod") {
+        if ln.starts_with("fn") ||
+                ln.starts_with("mod") {
             return true;
-        } else if !(it(ln.trim())) {
-            return false;
+        } else {
+            if !(it(ln.trim())) {
+                return false;
+            }
         }
     }
-    true
+    return true;
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
@@ -282,8 +299,8 @@ fn parse_no_prefer_dynamic(line: &str) -> bool {
     parse_name_directive(line, "no-prefer-dynamic")
 }
 
-fn parse_no_pretty_expanded(line: &str) -> bool {
-    parse_name_directive(line, "no-pretty-expanded")
+fn parse_pretty_expanded(line: &str) -> bool {
+    parse_name_directive(line, "pretty-expanded")
 }
 
 fn parse_pretty_mode(line: &str) -> Option<String> {
@@ -298,46 +315,49 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, "exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
-            .splitn(1, '=')
-            .map(|s| s.to_string())
-            .collect();
+                                      .splitn(2, '=')
+                                      .map(|s| s.to_string())
+                                      .collect();
 
         match strs.len() {
-            1 => (strs.pop().unwrap(), "".to_string()),
-            2 => {
-                let end = strs.pop().unwrap();
-                (strs.pop().unwrap(), end)
-            }
-            n => panic!("Expected 1 or 2 strings, not {}", n)
+          1 => (strs.pop().unwrap(), "".to_string()),
+          2 => {
+              let end = strs.pop().unwrap();
+              (strs.pop().unwrap(), end)
+          }
+          n => panic!("Expected 1 or 2 strings, not {}", n)
         }
     })
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-        Some(s) => Some(PathBuf::from(&s)),
-        None => {
-            if parse_name_directive(line, "pp-exact") {
-                testfile.file_name().map(|s| PathBuf::from(s))
-            } else {
-                None
-            }
+      Some(s) => Some(PathBuf::from(&s)),
+      None => {
+        if parse_name_directive(line, "pp-exact") {
+            testfile.file_name().map(|s| PathBuf::from(s))
+        } else {
+            None
         }
+      }
     }
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
-    line.contains(directive)
+    // This 'no-' rule is a quick hack to allow pretty-expanded and no-pretty-expanded to coexist
+    line.contains(directive) && !line.contains(&("no-".to_string() + directive))
 }
 
-pub fn parse_name_value_directive(line: &str, directive: &str) -> Option<String> {
+pub fn parse_name_value_directive(line: &str, directive: &str)
+                                  -> Option<String> {
     let keycolon = format!("{}:", directive);
-    if let Some(colon) = line.find(&keycolon) {
-        let value = line[(colon + keycolon.len()) .. line.len()].to_string();
-        debug!("{}: {}", directive, value);
-        Some(value)
-    } else {
-        None
+    match line.find(&keycolon) {
+        Some(colon) => {
+            let value = line[(colon + keycolon.len()) .. line.len()].to_string();
+            debug!("{}: {}", directive, value);
+            Some(value)
+        }
+        None => None
     }
 }
 
@@ -356,7 +376,7 @@ pub fn gdb_version_to_int(version_string: &str) -> isize {
     let major: isize = components[0].parse().ok().expect(&error_string);
     let minor: isize = components[1].parse().ok().expect(&error_string);
 
-    major * 1000 + minor
+    return major * 1000 + minor;
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {
@@ -364,6 +384,6 @@ pub fn lldb_version_to_int(version_string: &str) -> isize {
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
     let error_string = error_string;
-
-    version_string.parse().ok().expect(&error_string)
+    let major: isize = version_string.parse().ok().expect(&error_string);
+    return major;
 }

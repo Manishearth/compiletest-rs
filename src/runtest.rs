@@ -12,7 +12,7 @@ use self::TargetLocation::*;
 
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Codegen, DebugInfoLldb, DebugInfoGdb};
+use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc};
 use errors;
 use header::TestProps;
 use header;
@@ -24,32 +24,22 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::iter::repeat;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
-use std::str;
-use std::thread;
-use test::MetricMap;
 
 pub fn run(config: Config, testfile: &Path) {
     match &*config.target {
 
         "arm-linux-androideabi" | "aarch64-linux-android" => {
-            match config.android {
-                Some(ref android) if android.adb_device_status => { /* Ok */ },
-                _ => panic!("android device not available")
+            if !config.adb_device_status {
+                panic!("android device not available");
             }
         }
 
         _=> { }
     }
 
-    let mut _mm = MetricMap::new();
-    run_metrics(config, testfile, &mut _mm);
-}
-
-pub fn run_metrics(config: Config, testfile: &Path, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         print!("\n\n");
@@ -58,15 +48,16 @@ pub fn run_metrics(config: Config, testfile: &Path, mm: &mut MetricMap) {
     let props = header::load_props(&testfile);
     debug!("loaded props");
     match config.mode {
-      CompileFail => run_cfail_test(&config, &props, &testfile),
-      ParseFail => run_cfail_test(&config, &props, &testfile),
-      RunFail => run_rfail_test(&config, &props, &testfile),
-      RunPass => run_rpass_test(&config, &props, &testfile),
-      RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
-      Pretty => run_pretty_test(&config, &props, &testfile),
-      DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
-      DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
-      Codegen => run_codegen_test(&config, &props, &testfile, mm),
+        CompileFail => run_cfail_test(&config, &props, &testfile),
+        ParseFail => run_cfail_test(&config, &props, &testfile),
+        RunFail => run_rfail_test(&config, &props, &testfile),
+        RunPass => run_rpass_test(&config, &props, &testfile),
+        RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
+        Pretty => run_pretty_test(&config, &props, &testfile),
+        DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
+        DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
+        Codegen => run_codegen_test(&config, &props, &testfile),
+        Rustdoc => run_rustdoc_test(&config, &props, &testfile),
     }
 }
 
@@ -107,17 +98,13 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
 }
 
 fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
-    let proc_res = if !config.jit {
-        let proc_res = compile_test(config, props, testfile);
+    let proc_res = compile_test(config, props, testfile);
 
-        if !proc_res.status.success() {
-            fatal_proc_rec("compilation failed!", &proc_res);
-        }
+    if !proc_res.status.success() {
+        fatal_proc_rec("compilation failed!", &proc_res);
+    }
 
-        exec_compiled_test(config, props, testfile)
-    } else {
-        jit_test(config, props, testfile)
-    };
+    let proc_res = exec_compiled_test(config, props, testfile);
 
     // The value our Makefile configures valgrind to return on failure
     const VALGRIND_ERR: i32 = 100;
@@ -142,24 +129,16 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
 }
 
 fn run_rpass_test(config: &Config, props: &TestProps, testfile: &Path) {
-    if !config.jit {
-        let mut proc_res = compile_test(config, props, testfile);
+    let proc_res = compile_test(config, props, testfile);
 
-        if !proc_res.status.success() {
-            fatal_proc_rec("compilation failed!", &proc_res);
-        }
+    if !proc_res.status.success() {
+        fatal_proc_rec("compilation failed!", &proc_res);
+    }
 
-        proc_res = exec_compiled_test(config, props, testfile);
+    let proc_res = exec_compiled_test(config, props, testfile);
 
-        if !proc_res.status.success() {
-            fatal_proc_rec("test run failed!", &proc_res);
-        }
-    } else {
-        let proc_res = jit_test(config, props, testfile);
-
-        if !proc_res.status.success() {
-            fatal_proc_rec("jit failed!", &proc_res);
-        }
+    if !proc_res.status.success() {
+        fatal_proc_rec("test run failed!", &proc_res);
     }
 }
 
@@ -246,7 +225,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     if !proc_res.status.success() {
         fatal_proc_rec("pretty-printed source does not typecheck", &proc_res);
     }
-    if props.no_pretty_expanded { return }
+    if !props.pretty_expanded { return }
 
     // additionally, run `--pretty expanded` and try to build it.
     let proc_res = print_source(config, props, testfile, srcs[round].clone(), "expanded");
@@ -294,12 +273,12 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                             format!("--target={}", config.target),
                             "-L".to_string(),
                             aux_dir.to_str().unwrap().to_string());
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
-        args.extend(split_maybe_args(&props.compile_flags).into_iter());
-        ProcArgs {
+        args.extend(split_maybe_args(&config.target_rustcflags));
+        args.extend(split_maybe_args(&props.compile_flags));
+        return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
             args: args,
-        }
+        };
     }
 
     fn compare_source(expected: &str, actual: &str) {
@@ -342,13 +321,13 @@ actual:\n\
                             config.build_base.to_str().unwrap().to_string(),
                             "-L".to_string(),
                             aux_dir.to_str().unwrap().to_string());
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
-        args.extend(split_maybe_args(&props.compile_flags).into_iter());
+        args.extend(split_maybe_args(&config.target_rustcflags));
+        args.extend(split_maybe_args(&props.compile_flags));
         // FIXME (#9639): This needs to handle non-utf8 paths
-        ProcArgs {
+        return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
             args: args,
-        }
+        };
     }
 }
 
@@ -380,20 +359,16 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         "arm-linux-androideabi" | "aarch64-linux-android" => {
 
             cmds = cmds.replace("run", "continue");
-            let android_config = match config.android {
-                Some(ref android_config) => android_config,
-                None => panic!("Android config not found")
-            };
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            script_str.push_str("set charset UTF-8\n");
+            script_str.push_str(&format!("set charset {}\n", charset()));
             script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!("set solib-search-path \
                                          ./{}/stage2/lib/rustlib/{}/lib/\n",
                                          config.host, config.target));
-            for line in breakpoint_lines.iter() {
+            for line in &breakpoint_lines {
                 script_str.push_str(&format!("break {:?}:{}\n",
                                              testfile.file_name().unwrap()
                                                      .to_string_lossy(),
@@ -410,19 +385,19 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
 
             procsrv::run("",
-                         &android_config.adb_path,
+                         &config.adb_path,
                          None,
                          &[
                             "push".to_string(),
                             exe_file.to_str().unwrap().to_string(),
-                            android_config.adb_test_dir.clone()
+                            config.adb_test_dir.clone()
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", config.adb_path));
 
             procsrv::run("",
-                         &android_config.adb_path,
+                         &config.adb_path,
                          None,
                          &[
                             "forward".to_string(),
@@ -431,19 +406,19 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", config.adb_path));
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; \
                                    gdbserver{} :5039 {}/{}",
-                                  android_config.adb_test_dir.clone(),
+                                  config.adb_test_dir.clone(),
                                   if config.target.contains("aarch64")
                                   {"64"} else {""},
-                                  android_config.adb_test_dir.clone(),
+                                  config.adb_test_dir.clone(),
                                   exe_file.file_name().unwrap().to_str()
                                           .unwrap());
 
             let mut process = procsrv::run_background("",
-                                                      &android_config.adb_path
+                                                      &config.adb_path
                                                             ,
                                                       None,
                                                       &[
@@ -453,20 +428,16 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                       vec!(("".to_string(),
                                                             "".to_string())),
                                                       Some("".to_string()))
-                .expect(&format!("failed to exec `{:?}`", android_config.adb_path));
+                .expect(&format!("failed to exec `{:?}`", config.adb_path));
             loop {
                 //waiting 1 second for gdbserver start
-                fn sleep() {
-                    thread::sleep_ms(1000);
-                }
-                sleep();
+                ::std::thread::sleep_ms(1000);
                 if TcpStream::connect("127.0.0.1:5039").is_ok() {
                     break
                 }
             }
 
-            //let android_config = config.android.unwrap();
-            let tool_path = match android_config.android_cross_path.to_str() {
+            let tool_path = match config.android_cross_path.to_str() {
                 Some(x) => x.to_string(),
                 None => fatal("cannot find android cross path")
             };
@@ -521,8 +492,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                        .to_string();
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-
-            script_str.push_str("set charset UTF-8\n");
+            script_str.push_str(&format!("set charset {}\n", charset()));
             script_str.push_str("show version\n");
 
             match config.gdb_version {
@@ -624,7 +594,7 @@ fn find_rust_src_root(config: &Config) -> Option<PathBuf> {
         }
     }
 
-    None
+    return None;
 }
 
 fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) {
@@ -648,12 +618,15 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     let exe_file = make_exe_name(config, testfile);
 
-    if let Some(ref version) = config.lldb_version {
-        println!("NOTE: compiletest thinks it is using LLDB version {}",
-                 version);
-    } else {
-        println!("NOTE: compiletest does not know which version of \
-                  LLDB it is using");
+    match config.lldb_version {
+        Some(ref version) => {
+            println!("NOTE: compiletest thinks it is using LLDB version {}",
+                     version);
+        }
+        _ => {
+            println!("NOTE: compiletest does not know which version of \
+                      LLDB it is using");
+        }
     }
 
     // Parse debugger commands etc from test files
@@ -728,32 +701,37 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                 -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
+        cmd2procres(config,
+                    test_executable,
+                    Command::new(&config.python)
+                            .arg(&lldb_script_path)
+                            .arg(test_executable)
+                            .arg(debugger_script)
+                            .env("PYTHONPATH",
+                                 config.lldb_python_dir.as_ref().unwrap()))
+    }
+}
 
-        let mut cmd = Command::new("python");
-        cmd.arg(&lldb_script_path)
-           .arg(test_executable)
-           .arg(debugger_script)
-           .env("PYTHONPATH", config.lldb_python_dir.as_ref().unwrap());
-
-        let (status, out, err) = match cmd.output() {
-            Ok(Output { status, stdout, stderr }) => {
-                (status,
-                 String::from_utf8(stdout).unwrap(),
-                 String::from_utf8(stderr).unwrap())
-            },
-            Err(e) => {
-                fatal(&format!("Failed to setup Python process for \
-                                LLDB script: {}", e))
-            }
-        };
-
-        dump_output(config, test_executable, &out, &err);
-        ProcRes {
-            status: Status::Normal(status),
-            stdout: out,
-            stderr: err,
-            cmdline: format!("{:?}", cmd)
+fn cmd2procres(config: &Config, test_executable: &Path, cmd: &mut Command)
+              -> ProcRes {
+    let (status, out, err) = match cmd.output() {
+        Ok(Output { status, stdout, stderr }) => {
+            (status,
+             String::from_utf8(stdout).unwrap(),
+             String::from_utf8(stderr).unwrap())
+        },
+        Err(e) => {
+            fatal(&format!("Failed to setup Python process for \
+                            LLDB script: {}", e))
         }
+    };
+
+    dump_output(config, test_executable, &out, &err);
+    ProcRes {
+        status: Status::Normal(status),
+        stdout: out,
+        stderr: err,
+        cmdline: format!("{:?}", cmd)
     }
 }
 
@@ -866,7 +844,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                 }
                 first = false;
             }
-            if !failed && rest.len() == 0 {
+            if !failed && rest.is_empty() {
                 i += 1;
             }
             if i == num_check_lines {
@@ -937,12 +915,12 @@ fn check_forbid_output(props: &TestProps,
     }
 }
 
-fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
+fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
                          testfile: &Path,
                          proc_res: &ProcRes) {
 
     // true if we found the error in question
-    let mut found_flags: Vec<_> = repeat(false).take(expected_errors.len()).collect();
+    let mut found_flags = vec![false; expected_errors.len()];
 
     if proc_res.status.success() {
         fatal("process did not return an error status");
@@ -963,14 +941,10 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         }
     }
 
-    // A multi-line error will have followup lines which will always
-    // start with one of these strings.
+    // A multi-line error will have followup lines which start with a space
+    // or open paren.
     fn continuation( line: &str) -> bool {
-        line.starts_with(" expected") ||
-        line.starts_with("    found") ||
-        //                1234
-        // Should have 4 spaces: see issue 18946
-        line.starts_with("(")
+        line.starts_with(" ") || line.starts_with("(")
     }
 
     // Scan and extract our error/warning messages,
@@ -981,6 +955,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     // is the ending point, and * represents ANSI color codes.
     for line in proc_res.stderr.lines() {
         let mut was_expected = false;
+        let mut prev = 0;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
                 debug!("prefix={} ee.kind={} ee.msg={} line={}",
@@ -988,6 +963,17 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                        ee.kind,
                        ee.msg,
                        line);
+                // Suggestions have no line number in their output, so take on the line number of
+                // the previous expected error
+                if ee.kind == "suggestion" {
+                    assert!(expected_errors[prev].kind == "help",
+                            "SUGGESTIONs must be preceded by a HELP");
+                    if line.contains(&ee.msg) {
+                        found_flags[i] = true;
+                        was_expected = true;
+                        break;
+                    }
+                }
                 if (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
                     line.contains(&ee.kind) &&
                     line.contains(&ee.msg) {
@@ -996,6 +982,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                     break;
                 }
             }
+            prev = i;
         }
 
         // ignore this msg which gets printed at the end
@@ -1022,7 +1009,8 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 
 fn is_compiler_error_or_warning(line: &str) -> bool {
     let mut i = 0;
-    scan_until_char(line, ':', &mut i) &&
+    return
+        scan_until_char(line, ':', &mut i) &&
         scan_char(line, ':', &mut i) &&
         scan_integer(line, &mut i) &&
         scan_char(line, ':', &mut i) &&
@@ -1034,7 +1022,7 @@ fn is_compiler_error_or_warning(line: &str) -> bool {
         scan_integer(line, &mut i) &&
         scan_char(line, ' ', &mut i) &&
         (scan_string(line, "error", &mut i) ||
-         scan_string(line, "warning", &mut i))
+         scan_string(line, "warning", &mut i));
 }
 
 fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
@@ -1046,7 +1034,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
         return false;
     }
     *idx = opt.unwrap();
-    true
+    return true;
 }
 
 fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
@@ -1058,7 +1046,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
         return false;
     }
     *idx += ch.len_utf8();
-    true
+    return true;
 }
 
 fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
@@ -1074,7 +1062,7 @@ fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
         return false;
     }
     *idx = i;
-    true
+    return true;
 }
 
 fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
@@ -1091,7 +1079,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
         }
     }
     *idx = haystack_i;
-    true
+    return true;
 }
 
 struct ProcArgs {
@@ -1141,10 +1129,6 @@ fn compile_test(config: &Config, props: &TestProps,
     compile_test_(config, props, testfile, &[])
 }
 
-fn jit_test(config: &Config, props: &TestProps, testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, &["--jit".to_string()])
-}
-
 fn compile_test_(config: &Config, props: &TestProps,
                  testfile: &Path, extra_args: &[String]) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
@@ -1157,6 +1141,26 @@ fn compile_test_(config: &Config, props: &TestProps,
                                  link_args,
                                  |a, b| TargetLocation::ThisFile(make_exe_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
+}
+
+fn document(config: &Config, props: &TestProps,
+            testfile: &Path, extra_args: &[String]) -> (ProcRes, PathBuf) {
+    let aux_dir = aux_output_dir_name(config, testfile);
+    let out_dir = output_base_name(config, testfile);
+    let _ = fs::remove_dir_all(&out_dir);
+    ensure_dir(&out_dir);
+    let mut args = vec!["-L".to_string(),
+                        aux_dir.to_str().unwrap().to_string(),
+                        "-o".to_string(),
+                        out_dir.to_str().unwrap().to_string(),
+                        testfile.to_str().unwrap().to_string()];
+    args.extend(extra_args.iter().cloned());
+    args.extend(split_maybe_args(&props.compile_flags));
+    let args = ProcArgs {
+        prog: config.rustdoc_path.to_str().unwrap().to_string(),
+        args: args,
+    };
+    (compose_and_run_compiler(config, props, testfile, args, None), out_dir)
 }
 
 fn exec_compiled_test(config: &Config, props: &TestProps,
@@ -1183,33 +1187,40 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
     }
 }
 
-fn compose_and_run_compiler(
-    config: &Config,
-    props: &TestProps,
-    testfile: &Path,
-    args: ProcArgs,
-    input: Option<String>) -> ProcRes {
-
+fn compose_and_run_compiler(config: &Config, props: &TestProps,
+                            testfile: &Path, args: ProcArgs,
+                            input: Option<String>) -> ProcRes {
     if !props.aux_builds.is_empty() {
         ensure_dir(&aux_output_dir_name(config, testfile));
     }
 
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let extra_link_args = vec!("-L".to_string(), aux_dir.to_str().unwrap().to_string());
+    let extra_link_args = vec!["-L".to_string(),
+                               aux_dir.to_str().unwrap().to_string()];
 
     for rel_ab in &props.aux_builds {
-        let abs_ab = match config.aux_base {
-            Some(ref aux_base) => aux_base.join(rel_ab),
-            None => PathBuf::new()
-        };
+        let abs_ab = config.aux_base.join(rel_ab);
         let aux_props = header::load_props(&abs_ab);
         let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
         } else {
-            vec!("--crate-type=dylib".to_string())
+            // We primarily compile all auxiliary libraries as dynamic libraries
+            // to avoid code size bloat and large binaries as much as possible
+            // for the test suite (otherwise including libstd statically in all
+            // executables takes up quite a bit of space).
+            //
+            // For targets like MUSL, however, there is no support for dynamic
+            // libraries so we just go back to building a normal library. Note,
+            // however, that if the library is built with `force_host` then it's
+            // ok to be a dylib as the host should always support dylibs.
+            if config.target.contains("musl") && !aux_props.force_host {
+                vec!("--crate-type=lib".to_string())
+            } else {
+                vec!("--crate-type=dylib".to_string())
+            }
         };
-        crate_type.extend(extra_link_args.clone().into_iter());
+        crate_type.extend(extra_link_args.clone());
         let aux_args =
             make_compile_args(config,
                               &aux_props,
@@ -1262,8 +1273,8 @@ fn compose_and_run(config: &Config, testfile: &Path,
                    lib_path: &str,
                    aux_path: Option<&str>,
                    input: Option<String>) -> ProcRes {
-    program_output(config, testfile, lib_path,
-                   prog, aux_path, args, procenv, input)
+    return program_output(config, testfile, lib_path,
+                          prog, aux_path, args, procenv, input);
 }
 
 enum TargetLocation {
@@ -1307,15 +1318,15 @@ fn make_compile_args<F>(config: &Config,
     };
     args.push(path.to_str().unwrap().to_string());
     if props.force_host {
-        args.extend(split_maybe_args(&config.host_rustcflags).into_iter());
+        args.extend(split_maybe_args(&config.host_rustcflags));
     } else {
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
+        args.extend(split_maybe_args(&config.target_rustcflags));
     }
-    args.extend(split_maybe_args(&props.compile_flags).into_iter());
-    ProcArgs {
+    args.extend(split_maybe_args(&props.compile_flags));
+    return ProcArgs {
         prog: config.rustc_path.to_str().unwrap().to_string(),
         args: args,
-    }
+    };
 }
 
 fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> PathBuf {
@@ -1335,7 +1346,8 @@ fn make_exe_name(config: &Config, testfile: &Path) -> PathBuf {
     f
 }
 
-fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) -> ProcArgs {
+fn make_run_args(config: &Config, props: &TestProps, testfile: &Path)
+                 -> ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
     let mut args = split_maybe_args(&config.runtool);
@@ -1345,13 +1357,13 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) -> ProcArg
     args.push(exe_file.to_str().unwrap().to_string());
 
     // Add the arguments in the run_flags directive
-    args.extend(split_maybe_args(&props.run_flags).into_iter());
+    args.extend(split_maybe_args(&props.run_flags));
 
     let prog = args.remove(0);
-    ProcArgs {
+    return ProcArgs {
         prog: prog,
         args: args,
-    }
+    };
 }
 
 fn split_maybe_args(argstr: &Option<String>) -> Vec<String> {
@@ -1394,12 +1406,12 @@ fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: String
                      env,
                      input).expect(&format!("failed to exec `{}`", prog));
     dump_output(config, testfile, &out, &err);
-    ProcRes {
+    return ProcRes {
         status: Status::Normal(status),
         stdout: out,
         stderr: err,
         cmdline: cmdline,
-    }
+    };
 }
 
 fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
@@ -1438,7 +1450,7 @@ fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> PathBuf {
 fn aux_output_dir_name(config: &Config, testfile: &Path) -> PathBuf {
     let f = output_base_name(config, testfile);
     let mut fname = f.file_name().unwrap().to_os_string();
-    fname.push("libaux");
+    fname.push(&format!(".{}.libaux", config.mode));
     f.with_file_name(&fname)
 }
 
@@ -1494,10 +1506,6 @@ fn _arm_exec_compiled_test(config: &Config,
     let cmdline = make_cmdline("",
                                &args.prog,
                                &args.args);
-    let android_config = match config.android {
-        Some(ref c) => c,
-        None => panic!("No android config found")
-    };
 
     // get bare program string
     let mut tvec: Vec<String> = args.prog
@@ -1508,16 +1516,16 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // copy to target
     let copy_result = procsrv::run("",
-                                   &android_config.adb_path,
+                                   &config.adb_path,
                                    None,
                                    &[
                                     "push".to_string(),
                                     args.prog.clone(),
-                                    android_config.adb_test_dir.clone()
+                                    config.adb_test_dir.clone()
                                    ],
                                    vec!(("".to_string(), "".to_string())),
                                    Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", android_config.adb_path));
+        .expect(&format!("failed to exec `{}`", config.adb_path));
 
     if config.verbose {
         println!("push ({}) {} {} {}",
@@ -1536,34 +1544,34 @@ fn _arm_exec_compiled_test(config: &Config,
     for (key, val) in env {
         runargs.push(format!("{}={}", key, val));
     }
-    runargs.push(format!("{}/../adb_run_wrapper.sh", android_config.adb_test_dir));
-    runargs.push(format!("{}", android_config.adb_test_dir));
+    runargs.push(format!("{}/../adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(format!("{}", config.adb_test_dir));
     runargs.push(format!("{}", prog_short));
 
     for tv in &args.args {
         runargs.push(tv.to_string());
     }
     procsrv::run("",
-                 &android_config.adb_path,
+                 &config.adb_path,
                  None,
                  &runargs,
                  vec!(("".to_string(), "".to_string())), Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", android_config.adb_path));
+        .expect(&format!("failed to exec `{}`", config.adb_path));
 
     // get exitcode of result
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.exitcode", android_config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.exitcode", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
         procsrv::run("",
-                     &android_config.adb_path,
+                     &config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", android_config.adb_path));
+        .expect(&format!("failed to exec `{}`", config.adb_path));
 
     let mut exitcode: i32 = 0;
     for c in exitcode_out.chars() {
@@ -1578,31 +1586,31 @@ fn _arm_exec_compiled_test(config: &Config,
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.stdout", android_config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stdout", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stdout_out, err: _, status: _ } =
         procsrv::run("",
-                     &android_config.adb_path,
+                     &config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", android_config.adb_path));
+        .expect(&format!("failed to exec `{}`", config.adb_path));
 
     // get stderr of result
     runargs = Vec::new();
     runargs.push("shell".to_string());
     runargs.push("cat".to_string());
-    runargs.push(format!("{}/{}.stderr", android_config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stderr", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stderr_out, err: _, status: _ } =
         procsrv::run("",
-                     &android_config.adb_path,
+                     &config.adb_path,
                      None,
                      &runargs,
                      vec!(("".to_string(), "".to_string())),
                      Some("".to_string()))
-        .expect(&format!("failed to exec `{}`", android_config.adb_path));
+        .expect(&format!("failed to exec `{}`", config.adb_path));
 
     dump_output(config,
                 testfile,
@@ -1620,30 +1628,25 @@ fn _arm_exec_compiled_test(config: &Config,
 fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let android_config = match config.android {
-        Some(ref android_config) => android_config,
-        None => panic!("Android config not found")
-    };
-
     let dirs = fs::read_dir(&tdir).unwrap();
     for file in dirs {
         let file = file.unwrap().path();
         if file.extension().and_then(|s| s.to_str()) == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let copy_result = procsrv::run("",
-                                           &android_config.adb_path,
+                                           &config.adb_path,
                                            None,
                                            &[
                                             "push".to_string(),
                                             file.to_str()
                                                 .unwrap()
                                                 .to_string(),
-                                            android_config.adb_test_dir.to_string(),
+                                            config.adb_test_dir.to_string(),
                                            ],
                                            vec!(("".to_string(),
                                                  "".to_string())),
                                            Some("".to_string()))
-                .expect(&format!("failed to exec `{}`", android_config.adb_path));
+                .expect(&format!("failed to exec `{}`", config.adb_path));
 
             if config.verbose {
                 println!("push ({}) {:?} {} {}",
@@ -1654,28 +1657,17 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     }
 }
 
-// codegen tests (vs. clang)
+// codegen tests (using FileCheck)
 
-fn append_suffix_to_stem(p: &Path, suffix: &str) -> PathBuf {
-    if suffix.len() == 0 {
-        p.to_path_buf()
-    } else {
-        let mut stem = p.file_stem().unwrap().to_os_string();
-        stem.push("-");
-        stem.push(suffix);
-        p.with_file_name(&stem)
-    }
-}
-
-fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
+fn compile_test_and_save_ir(config: &Config, props: &TestProps,
                                  testfile: &Path) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_string(),
                              aux_dir.to_str().unwrap().to_string());
-    let llvm_args = vec!("--emit=llvm-bc,obj".to_string(),
+    let llvm_args = vec!("--emit=llvm-ir".to_string(),
                          "--crate-type=lib".to_string());
-    link_args.extend(llvm_args.into_iter());
+    link_args.extend(llvm_args);
     let args = make_compile_args(config,
                                  props,
                                  link_args,
@@ -1686,119 +1678,58 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
-fn compile_cc_with_clang_and_save_bitcode(config: &Config, _props: &TestProps,
-                                          testfile: &Path) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
-    let testcc = testfile.with_extension("cc");
-    let proc_args = ProcArgs {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: config.clang_path.as_ref().unwrap().to_str().unwrap().to_string(),
-        args: vec!("-c".to_string(),
-                   "-emit-llvm".to_string(),
-                   "-o".to_string(),
-                   bitcodefile.to_str().unwrap().to_string(),
-                   testcc.to_str().unwrap().to_string())
-    };
-    compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
-}
-
-fn extract_function_from_bitcode(config: &Config, _props: &TestProps,
-                                 fname: &str, testfile: &Path,
-                                 suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
-    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-extract");
+fn check_ir_with_filecheck(config: &Config, testfile: &Path) -> ProcRes {
+    let irfile = output_base_name(config, testfile).with_extension("ll");
+    let prog = config.llvm_bin_path.as_ref().unwrap().join("FileCheck");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.to_str().unwrap().to_string(),
-        args: vec!(format!("-func={}", fname),
-                   format!("-o={}", extracted_bc.to_str().unwrap()),
-                   bitcodefile.to_str().unwrap().to_string())
+        args: vec!(format!("-input-file={}", irfile.to_str().unwrap()),
+                   testfile.to_str().unwrap().to_string())
     };
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
 }
 
-fn disassemble_extract(config: &Config, _props: &TestProps,
-                       testfile: &Path, suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
-    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let extracted_ll = extracted_bc.with_extension("ll");
-    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-dis");
-    let proc_args = ProcArgs {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: prog.to_str().unwrap().to_string(),
-        args: vec!(format!("-o={}", extracted_ll.to_str().unwrap()),
-                   extracted_bc.to_str().unwrap().to_string())
-    };
-    compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
-}
-
-
-fn count_extracted_lines(p: &Path) -> usize {
-    let mut x = Vec::new();
-    File::open(&p.with_extension("ll")).unwrap().read_to_end(&mut x).unwrap();
-    let x = str::from_utf8(&x).unwrap();
-    x.lines().count()
-}
-
-
-fn run_codegen_test(config: &Config, props: &TestProps,
-                    testfile: &Path, mm: &mut MetricMap) {
+fn run_codegen_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     if config.llvm_bin_path.is_none() {
         fatal("missing --llvm-bin-path");
     }
 
-    if config.clang_path.is_none() {
-        fatal("missing --clang-path");
-    }
-
-    let mut proc_res = compile_test_and_save_bitcode(config, props, testfile);
+    let mut proc_res = compile_test_and_save_ir(config, props, testfile);
     if !proc_res.status.success() {
         fatal_proc_rec("compilation failed!", &proc_res);
     }
 
-    proc_res = extract_function_from_bitcode(config, props, "test", testfile, "");
+    proc_res = check_ir_with_filecheck(config, testfile);
     if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed",
+        fatal_proc_rec("verification with 'FileCheck' failed",
                       &proc_res);
     }
+}
 
-    proc_res = disassemble_extract(config, props, testfile, "");
-    if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed", &proc_res);
+fn charset() -> &'static str {
+    if cfg!(any(target_os = "bitrig", target_os = "freebsd")) {
+        "auto"
+    } else {
+        "UTF-8"
     }
+}
 
-
-    let mut proc_res = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
+fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
+    let (proc_res, out_dir) = document(config, props, testfile, &[]);
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec("rustdoc failed!", &proc_res);
     }
+    let root = find_rust_src_root(config).unwrap();
 
-    proc_res = extract_function_from_bitcode(config, props, "test", testfile, "clang");
-    if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed",
-                      &proc_res);
+    let res = cmd2procres(config,
+                          testfile,
+                          Command::new(&config.python)
+                                  .arg(root.join("src/etc/htmldocck.py"))
+                                  .arg(out_dir)
+                                  .arg(testfile));
+    if !res.status.success() {
+        fatal_proc_rec("htmldocck failed!", &res);
     }
-
-    proc_res = disassemble_extract(config, props, testfile, "clang");
-    if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed", &proc_res);
-    }
-
-    let base = output_base_name(config, testfile);
-    let base_extract = append_suffix_to_stem(&base, "extract");
-
-    let base_clang = append_suffix_to_stem(&base, "clang");
-    let base_clang_extract = append_suffix_to_stem(&base_clang, "extract");
-
-    let base_lines = count_extracted_lines(&base_extract);
-    let clang_lines = count_extracted_lines(&base_clang_extract);
-
-    mm.insert_metric("clang-codegen-ratio",
-                     (base_lines as f64) / (clang_lines as f64),
-                     0.001);
 }
