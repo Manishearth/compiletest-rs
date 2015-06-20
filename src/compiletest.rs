@@ -11,13 +11,13 @@
 #![crate_type = "lib"]
 
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(rustc_private)]
 #![feature(unboxed_closures)]
-#![feature(std_misc)]
 #![feature(test)]
 #![feature(path_ext)]
 #![feature(str_char)]
+#![feature(dynamic_lib)]
+#![feature(vec_push_all)]
 
 #![deny(warnings)]
 #![deny(unused_imports)]
@@ -31,7 +31,6 @@ extern crate log;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::thunk::Thunk;
 use common::{Config, Mode};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use std::borrow::ToOwned;
@@ -205,7 +204,7 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_path_buf();
     test::DynTestFn(Box::new(move || {
         runtest::run(config, &testfile)
-    }) as Thunk)
+    }))
 }
 
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
