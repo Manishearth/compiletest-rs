@@ -43,6 +43,10 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
+#[cfg(target_os = "macos")]
+static LD_LIBRARY_PATH: &'static str = env!("DYLD_LIBRARY_PATH");
+
+#[cfg(not(target_os = "macos"))]
 static LD_LIBRARY_PATH: &'static str = env!("LD_LIBRARY_PATH");
 
 pub fn default_config() -> Config {
