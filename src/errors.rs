@@ -68,15 +68,14 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (false, line[start + 3..].chars().take_while(|c| *c == '^').count())
     };
     let kind_start = start + 3 + adjusts + (follow as usize);
-    let letters = line[kind_start..].chars();
-    let kind = letters.skip_while(|c| c.is_whitespace())
+    let kind = line[kind_start..].chars().skip_while(|c| c.is_whitespace())
                       .take_while(|c| !c.is_whitespace())
                       .flat_map(|c| c.to_lowercase())
                       .collect::<String>();
     let letters = line[kind_start..].chars();
     let msg = letters.skip_while(|c| c.is_whitespace())
                      .skip_while(|c| !c.is_whitespace())
-                     .collect::<String>().trim().to_string();
+                     .collect::<String>().trim().to_owned();
 
     let (which, line) = if follow {
         assert!(adjusts == 0, "use either //~| or //~^, not both.");

@@ -129,8 +129,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
     for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_TASKS"] {
         if let Ok(val) = env::var(key) {
-            if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
-                    exec_env.push((key.to_string(), val))
+            if exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
+                    exec_env.push((key.to_owned(), val))
             }
         }
     }
@@ -147,7 +147,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         no_pretty_expanded: no_pretty_expanded,
-        pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
+        pretty_mode: pretty_mode.unwrap_or("normal".to_owned()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
     }
@@ -299,11 +299,11 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
             .splitn(1, '=')
-            .map(|s| s.to_string())
+            .map(|s| s.to_owned())
             .collect();
 
         match strs.len() {
-            1 => (strs.pop().unwrap(), "".to_string()),
+            1 => (strs.pop().unwrap(), "".to_owned()),
             2 => {
                 let end = strs.pop().unwrap();
                 (strs.pop().unwrap(), end)
@@ -318,7 +318,7 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
         Some(s) => Some(PathBuf::from(&s)),
         None => {
             if parse_name_directive(line, "pp-exact") {
-                testfile.file_name().map(|s| PathBuf::from(s))
+                testfile.file_name().map(PathBuf::from)
             } else {
                 None
             }
@@ -333,7 +333,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 pub fn parse_name_value_directive(line: &str, directive: &str) -> Option<String> {
     let keycolon = format!("{}:", directive);
     if let Some(colon) = line.find(&keycolon) {
-        let value = line[(colon + keycolon.len()) .. line.len()].to_string();
+        let value = line[(colon + keycolon.len()) .. line.len()].to_owned();
         debug!("{}: {}", directive, value);
         Some(value)
     } else {

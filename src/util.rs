@@ -42,7 +42,7 @@ pub fn make_new_path(path: &str) -> String {
         Ok(curr) => {
             format!("{}{}{}", path, path_div(), curr)
         }
-        Err(..) => path.to_string()
+        Err(..) => path.to_owned()
     }
 }
 
