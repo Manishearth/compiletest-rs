@@ -1273,7 +1273,7 @@ enum TargetLocation {
 
 fn make_compile_args<F>(config: &Config,
                         props: &TestProps,
-                        extras: Vec<String> ,
+                        extras: Vec<String>,
                         xform: F,
                         testfile: &Path)
                         -> ProcArgs where
@@ -1290,7 +1290,7 @@ fn make_compile_args<F>(config: &Config,
                         "-L".to_owned(),
                         config.build_base.to_str().unwrap().to_owned(),
                         format!("--target={}", target));
-    args.push_all(&extras);
+    args.extend(extras.iter().cloned());
     if !props.no_prefer_dynamic {
         args.push("-C".to_owned());
         args.push("prefer-dynamic".to_owned());
