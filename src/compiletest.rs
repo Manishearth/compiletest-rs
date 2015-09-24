@@ -10,14 +10,11 @@
 
 #![crate_type = "lib"]
 
-#![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(unboxed_closures)]
 #![feature(test)]
 #![feature(path_ext)]
 #![feature(str_char)]
 #![feature(dynamic_lib)]
-#![feature(vec_push_all)]
 
 #![deny(warnings)]
 #![deny(unused_imports)]
@@ -211,9 +208,9 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     let testfile = testfile.to_path_buf();
-    test::DynMetricFn(box move |mm: &mut test::MetricMap| {
+    test::DynMetricFn(Box::new(move |mm: &mut test::MetricMap| {
         runtest::run_metrics(config, &testfile, mm)
-    })
+    }))
 }
 
 #[allow(dead_code)]

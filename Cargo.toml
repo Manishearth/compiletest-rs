@@ -14,3 +14,6 @@ readme = "README.md"
 [lib]
 name = "compiletest_rs"
 path = "src/compiletest.rs"
+
+[dependencies]
+log = "*"
