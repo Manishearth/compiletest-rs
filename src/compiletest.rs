@@ -12,11 +12,9 @@
 
 #![feature(rustc_private)]
 #![feature(test)]
-#![feature(path_ext)]
 #![feature(str_char)]
 #![feature(dynamic_lib)]
 
-#![deny(warnings)]
 #![deny(unused_imports)]
 
 extern crate test;
