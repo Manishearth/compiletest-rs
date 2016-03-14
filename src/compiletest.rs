@@ -13,7 +13,6 @@
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(str_char)]
-#![feature(dynamic_lib)]
 
 #![deny(unused_imports)]
 
@@ -25,9 +24,11 @@ extern crate log;
 
 use std::env;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use common::{Config, Mode};
-use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
+use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
+use test::TestPaths;
 use std::borrow::ToOwned;
 use rustc::session::config::host_triple;
 
@@ -38,24 +39,19 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
-#[cfg(target_os = "macos")]
-static LD_LIBRARY_PATH: &'static str = env!("DYLD_LIBRARY_PATH");
-
-#[cfg(not(target_os = "macos"))]
-static LD_LIBRARY_PATH: &'static str = env!("LD_LIBRARY_PATH");
-
 pub fn default_config() -> Config {
     Config {
-        compile_lib_path: LD_LIBRARY_PATH.to_owned(),
-        run_lib_path: LD_LIBRARY_PATH.to_owned(),
+        compile_lib_path: "".to_owned(),
+        run_lib_path: "".to_owned(),
         rustc_path: PathBuf::from("rustc"),
-        clang_path: None,
+        rustdoc_path: PathBuf::from("rustdoc-path"),
+        python: "python".to_owned(),
         valgrind_path: None,
         force_valgrind: false,
         llvm_bin_path: None,
         src_base: PathBuf::from("tests/run-pass"),
         build_base: PathBuf::from("/tmp"),
-        aux_base: None,
+        aux_base: PathBuf::from("aux-base"),
         stage_id: "stage3".to_owned(),
         mode: Mode::RunPass,
         run_ignored: false,
@@ -64,14 +60,16 @@ pub fn default_config() -> Config {
         runtool: None,
         host_rustcflags: None,
         target_rustcflags: None,
-        jit: false,
         target: host_triple().to_owned(),
         host: "(none)".to_owned(),
         gdb_version: None,
         lldb_version: None,
-        android: None,
         lldb_python_dir: None,
-        verbose: false
+        android_cross_path: PathBuf::from("android-cross-path"),
+        adb_path: "adb-path".to_owned(),
+        adb_test_dir: "adb-test-dir/target".to_owned(),
+        adb_device_status: false,
+        verbose: false,
     }
 }
 
@@ -83,9 +81,9 @@ pub fn run_tests(config: &Config) {
         }
 
         // android debug-info test uses remote debugger
-        // so, we test 1 task at once.
+        // so, we test 1 thread at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        env::set_var("RUST_TEST_TASKS","1");
+        env::set_var("RUST_TEST_THREADS","1");
     }
 
     if let DebugInfoLldb = config.mode {
@@ -100,11 +98,7 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    // #[allow(deprecated)]
-    // fn raise_fd_limit() {
-    //     std::old_io::test::raise_fd_limit();
-    // }
-    // raise_fd_limit();
+    // unsafe { raise_fd_limit::raise_fd_limit(); }
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
@@ -137,21 +131,61 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}",
            config.src_base.display());
     let mut tests = Vec::new();
-    let dirs = fs::read_dir(&config.src_base).unwrap();
-    for file in dirs {
-        let file = file.unwrap().path();
-        debug!("inspecting file {:?}", file.display());
-        if is_test(config, &file) {
-            let t = make_test(config, &file, || {
-                match config.mode {
-                    Codegen => make_metrics_test_closure(config, &file),
-                    _ => make_test_closure(config, &file)
-                }
-            });
-            tests.push(t)
+    collect_tests_from_dir(config,
+                           &config.src_base,
+                           &config.src_base,
+                           &PathBuf::new(),
+                           &mut tests)
+        .unwrap();
+    tests
+}
+
+fn collect_tests_from_dir(config: &Config,
+                          base: &Path,
+                          dir: &Path,
+                          relative_dir_path: &Path,
+                          tests: &mut Vec<test::TestDescAndFn>)
+                          -> io::Result<()> {
+    // Ignore directories that contain a file
+    // `compiletest-ignore-dir`.
+    for file in try!(fs::read_dir(dir)) {
+        let file = try!(file);
+        if file.file_name() == *"compiletest-ignore-dir" {
+            return Ok(());
         }
     }
-    tests
+
+    let dirs = try!(fs::read_dir(dir));
+    for file in dirs {
+        let file = try!(file);
+        let file_path = file.path();
+        debug!("inspecting file {:?}", file_path.display());
+        if is_test(config, &file_path) {
+            // If we find a test foo/bar.rs, we have to build the
+            // output directory `$build/foo` so we can write
+            // `$build/foo/bar` into it. We do this *now* in this
+            // sequential loop because otherwise, if we do it in the
+            // tests themselves, they race for the privilege of
+            // creating the directories and sometimes fail randomly.
+            let build_dir = config.build_base.join(&relative_dir_path);
+            fs::create_dir_all(&build_dir).unwrap();
+
+            let paths = TestPaths {
+                file: file_path,
+                base: base.to_path_buf(),
+                relative_dir: relative_dir_path.to_path_buf(),
+            };
+            tests.push(make_test(config, &paths))
+        } else if file_path.is_dir() {
+            let relative_file_path = relative_dir_path.join(file.file_name());
+            try!(collect_tests_from_dir(config,
+                                        base,
+                                        &file_path,
+                                        &relative_file_path,
+                                        tests));
+        }
+    }
+    Ok(())
 }
 
 pub fn is_test(config: &Config, testfile: &Path) -> bool {
@@ -161,53 +195,67 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
           Pretty => vec!(".rs".to_owned()),
           _ => vec!(".rc".to_owned(), ".rs".to_owned())
         };
-
     let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
     let name = testfile.file_name().unwrap().to_str().unwrap();
 
-    valid_extensions.iter().any(|ext| name.ends_with(ext)) &&
-        !invalid_prefixes.iter().any(|pre| name.starts_with(pre))
+    let mut valid = false;
+
+    for ext in &valid_extensions {
+        if name.ends_with(ext) {
+            valid = true;
+        }
+    }
+
+    for pre in &invalid_prefixes {
+        if name.starts_with(pre) {
+            valid = false;
+        }
+    }
+
+    valid
 }
 
-pub fn make_test<F>(config: &Config, testfile: &Path, f: F) -> test::TestDescAndFn where
-    F: FnOnce() -> test::TestFn,
-{
+pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
+    let early_props = header::early_props(config, &testpaths.file);
+
+    // The `should-fail` annotation doesn't apply to pretty tests,
+    // since we run the pretty printer across all tests by default.
+    // If desired, we could add a `should-fail-pretty` annotation.
+    let should_panic = match config.mode {
+        Pretty => test::ShouldPanic::No,
+        _ => if early_props.should_fail {
+            test::ShouldPanic::Yes
+        } else {
+            test::ShouldPanic::No
+        }
+    };
+
     test::TestDescAndFn {
         desc: test::TestDesc {
-            name: make_test_name(config, testfile),
-            ignore: header::is_test_ignored(config, testfile),
-            should_panic: test::ShouldPanic::No,
+            name: make_test_name(config, testpaths),
+            ignore: early_props.ignore,
+            should_panic: should_panic,
         },
-        testfn: f(),
+        testfn: make_test_closure(config, testpaths),
     }
 }
 
-pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
-
-    // Try to elide redundant long paths
-    fn shorten(path: &Path) -> String {
-        let filename = path.file_name().unwrap().to_str();
-        let p = path.parent().unwrap();
-        let dir = p.file_name().unwrap().to_str();
-        format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
-    }
-
-    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
+pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+    // Convert a complete path to something like
+    //
+    //    run-pass/foo/bar/baz.rs
+    let path =
+        PathBuf::from(config.mode.to_string())
+        .join(&testpaths.relative_dir)
+        .join(&testpaths.file.file_name().unwrap());
+    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
 }
 
-pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
-    let config = (*config).clone();
-    let testfile = testfile.to_path_buf();
+pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
+    let config = config.clone();
+    let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testfile)
-    }))
-}
-
-pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
-    let config = (*config).clone();
-    let testfile = testfile.to_path_buf();
-    test::DynMetricFn(Box::new(move |mm: &mut test::MetricMap| {
-        runtest::run_metrics(config, &testfile, mm)
+        runtest::run(config, &testpaths)
     }))
 }
 
@@ -215,10 +263,10 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
     match full_version_line {
         Some(ref full_version_line)
-          if full_version_line.trim().len() > 0 => {
+          if !full_version_line.trim().is_empty() => {
             let full_version_line = full_version_line.trim();
 
-            // used to be a regex "(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)"
+            // used to be a regex "(^|[^0-9])([0-9]\.[0-9]+)"
             for (pos, c) in full_version_line.char_indices() {
                 if !c.is_digit(10) { continue }
                 if pos + 2 >= full_version_line.len() { continue }
@@ -227,11 +275,12 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
                 if pos > 0 && full_version_line.char_at_reverse(pos).is_digit(10) {
                     continue
                 }
-                if pos + 3 < full_version_line.len() &&
-                   full_version_line.char_at(pos + 3).is_digit(10) {
-                    continue
+                let mut end = pos + 3;
+                while end < full_version_line.len() &&
+                      full_version_line.char_at(end).is_digit(10) {
+                    end += 1;
                 }
-                return Some(full_version_line[pos..pos+3].to_owned());
+                return Some(full_version_line[pos..end].to_owned());
             }
             println!("Could not extract GDB version from line '{}'",
                      full_version_line);
@@ -254,9 +303,8 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
     // We are only interested in the major version number, so this function
     // will return `Some("179")` and `Some("300")` respectively.
 
-    match full_version_line {
-        Some(ref full_version_line)
-          if !full_version_line.trim().is_empty() => {
+    if let Some(ref full_version_line) = full_version_line {
+        if !full_version_line.trim().is_empty() {
             let full_version_line = full_version_line.trim();
 
             for (pos, l) in full_version_line.char_indices() {
@@ -278,8 +326,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
             }
             println!("Could not extract LLDB version from line '{}'",
                      full_version_line);
-            None
-        },
-        _ => None
+        }
     }
+    None
 }

@@ -8,26 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)] // for old path, for dynamic_lib
-
-use std::process::{ExitStatus, Command, Child, Output, Stdio};
+use std::env;
+use std::ffi::OsString;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::dynamic_lib::DynamicLibrary;
+use std::process::{ExitStatus, Command, Child, Output, Stdio};
 
 fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Need to be sure to put both the lib_path and the aux path in the dylib
     // search path for the child.
-    let mut path = DynamicLibrary::search_path();
+    let var = if cfg!(windows) {
+        "PATH"
+    } else if cfg!(target_os = "macos") {
+        "DYLD_LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    };
+    let mut path = env::split_paths(&env::var_os(var).unwrap_or(OsString::new()))
+                       .collect::<Vec<_>>();
     if let Some(p) = aux_path {
         path.insert(0, PathBuf::from(p));
     }
     path.insert(0, PathBuf::from(lib_path));
 
     // Add the new dylib search path var
-    let var = DynamicLibrary::envvar();
-    let newpath = DynamicLibrary::create_path(&path);
-    cmd.env(var, &newpath);
+    let newpath = env::join_paths(&path).unwrap();
+    cmd.env(var, newpath);
 }
 
 pub struct Result {
