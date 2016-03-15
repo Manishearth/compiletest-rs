@@ -23,7 +23,9 @@ pub enum Mode {
     Pretty,
     DebugInfoGdb,
     DebugInfoLldb,
-    Codegen
+    Codegen,
+    Rustdoc,
+    CodegenUnits,
 }
 
 impl FromStr for Mode {
@@ -39,6 +41,8 @@ impl FromStr for Mode {
           "debuginfo-lldb" => Ok(DebugInfoLldb),
           "debuginfo-gdb" => Ok(DebugInfoGdb),
           "codegen" => Ok(Codegen),
+          "rustdoc" => Ok(Rustdoc),
+          "codegen-units" => Ok(CodegenUnits),
           _ => Err(()),
         }
     }
@@ -56,6 +60,8 @@ impl fmt::Display for Mode {
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
+            Rustdoc => "rustdoc",
+            CodegenUnits => "codegen-units",
         }, f)
     }
 }
@@ -71,8 +77,11 @@ pub struct Config {
     // The rustc executable
     pub rustc_path: PathBuf,
 
-    // The clang executable
-    pub clang_path: Option<PathBuf>,
+    // The rustdoc executable
+    pub rustdoc_path: PathBuf,
+
+    // The python executable
+    pub python: String,
 
     // The llvm binaries path
     pub llvm_bin_path: Option<PathBuf>,
@@ -91,7 +100,7 @@ pub struct Config {
     pub build_base: PathBuf,
 
     // Directory for auxiliary libraries
-    pub aux_base: Option<PathBuf>,
+    pub aux_base: PathBuf,
 
     // The name of the stage being built (stage1, etc)
     pub stage_id: String,
@@ -118,9 +127,6 @@ pub struct Config {
     // Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
 
-    // Run tests using the JIT
-    pub jit: bool,
-
     // Target system to be tested
     pub target: String,
 
@@ -133,18 +139,6 @@ pub struct Config {
     // Version of LLDB
     pub lldb_version: Option<String>,
 
-    // If present, holds all the necessary parameters for android testing
-    pub android: Option<AndroidConfig>,
-
-    // the path containing LLDB's Python module
-    pub lldb_python_dir: Option<String>,
-
-    // Explain what's going on
-    pub verbose: bool
-}
-
-#[derive(Clone)]
-pub struct AndroidConfig {
     // Path to the android tools
     pub android_cross_path: PathBuf,
 
@@ -155,5 +149,11 @@ pub struct AndroidConfig {
     pub adb_test_dir: String,
 
     // status whether android device available or not
-    pub adb_device_status: bool
+    pub adb_device_status: bool,
+
+    // the path containing LLDB's Python module
+    pub lldb_python_dir: Option<String>,
+
+    // Explain what's going on
+    pub verbose: bool
 }
