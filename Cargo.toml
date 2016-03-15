@@ -16,4 +16,4 @@ name = "compiletest_rs"
 path = "src/compiletest.rs"
 
 [dependencies]
-log = "*"
+log = "0.3.5"
