@@ -70,6 +70,7 @@ pub fn default_config() -> Config {
         adb_test_dir: "adb-test-dir/target".to_owned(),
         adb_device_status: false,
         verbose: false,
+        quiet: false,
     }
 }
 
@@ -114,11 +115,9 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
-        filter: match config.filter {
-            None => None,
-            Some(ref filter) => Some(filter.clone()),
-        },
+        filter: config.filter.clone(),
         run_ignored: config.run_ignored,
+        quiet: config.quiet,
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
