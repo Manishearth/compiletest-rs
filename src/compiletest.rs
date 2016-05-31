@@ -50,7 +50,7 @@ pub fn default_config() -> Config {
         force_valgrind: false,
         llvm_bin_path: None,
         src_base: PathBuf::from("tests/run-pass"),
-        build_base: PathBuf::from("/tmp"),
+        build_base: env::temp_dir(),
         aux_base: PathBuf::from("aux-base"),
         stage_id: "stage3".to_owned(),
         mode: Mode::RunPass,
