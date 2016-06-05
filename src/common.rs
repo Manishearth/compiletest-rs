@@ -26,6 +26,9 @@ pub enum Mode {
     Codegen,
     Rustdoc,
     CodegenUnits,
+    Incremental,
+    RunMake,
+    Ui,
 }
 
 impl FromStr for Mode {
@@ -43,6 +46,9 @@ impl FromStr for Mode {
           "codegen" => Ok(Codegen),
           "rustdoc" => Ok(Rustdoc),
           "codegen-units" => Ok(CodegenUnits),
+          "incremental" => Ok(Incremental),
+          "run-make" => Ok(RunMake),
+          "ui" => Ok(Ui),
           _ => Err(()),
         }
     }
@@ -62,6 +68,9 @@ impl fmt::Display for Mode {
             Codegen => "codegen",
             Rustdoc => "rustdoc",
             CodegenUnits => "codegen-units",
+            Incremental => "incremental",
+            RunMake => "run-make",
+            Ui => "ui",
         }, f)
     }
 }
@@ -69,10 +78,10 @@ impl fmt::Display for Mode {
 #[derive(Clone)]
 pub struct Config {
     // The library paths required for running the compiler
-    pub compile_lib_path: String,
+    pub compile_lib_path: PathBuf,
 
     // The library paths required for running compiled programs
-    pub run_lib_path: String,
+    pub run_lib_path: PathBuf,
 
     // The rustc executable
     pub rustc_path: PathBuf,
@@ -80,11 +89,14 @@ pub struct Config {
     // The rustdoc executable
     pub rustdoc_path: PathBuf,
 
-    // The python executable
-    pub python: String,
+    // The python executable to use for LLDB
+    pub lldb_python: String,
 
-    // The llvm binaries path
-    pub llvm_bin_path: Option<PathBuf>,
+    // The python executable to use for htmldocck
+    pub docck_python: String,
+
+    // The llvm FileCheck binary path
+    pub llvm_filecheck: Option<PathBuf>,
 
     // The valgrind path
     pub valgrind_path: Option<String>,
@@ -98,9 +110,6 @@ pub struct Config {
 
     // The directory where programs should be built
     pub build_base: PathBuf,
-
-    // Directory for auxiliary libraries
-    pub aux_base: PathBuf,
 
     // The name of the stage being built (stage1, etc)
     pub stage_id: String,
@@ -159,4 +168,12 @@ pub struct Config {
 
     // Print one character per test instead of one line
     pub quiet: bool,
+
+    // Configuration for various run-make tests frobbing things like C compilers
+    // or querying about various LLVM component information.
+    pub cc: String,
+    pub cxx: String,
+    pub cflags: String,
+    pub llvm_components: String,
+    pub llvm_cxxflags: String,
 }

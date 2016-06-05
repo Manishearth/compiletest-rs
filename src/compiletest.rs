@@ -17,6 +17,7 @@
 
 extern crate test;
 extern crate rustc;
+extern crate rustc_serialize;
 
 #[macro_use]
 extern crate log;
@@ -31,6 +32,10 @@ use test::TestPaths;
 use std::borrow::ToOwned;
 use rustc::session::config::host_triple;
 
+use self::header::EarlyProps;
+
+pub mod uidiff;
+pub mod json;
 pub mod procsrv;
 pub mod util;
 pub mod header;
@@ -40,18 +45,18 @@ pub mod errors;
 
 pub fn default_config() -> Config {
     Config {
-        compile_lib_path: "".to_owned(),
-        run_lib_path: "".to_owned(),
+        compile_lib_path: PathBuf::from(""),
+        run_lib_path: PathBuf::from(""),
         rustc_path: PathBuf::from("rustc"),
         rustdoc_path: PathBuf::from("rustdoc-path"),
-        python: "python".to_owned(),
+        lldb_python: "python".to_owned(),
+        docck_python: "docck-python".to_owned(),
         valgrind_path: None,
         force_valgrind: false,
-        llvm_bin_path: None,
+        llvm_filecheck: None,
         src_base: PathBuf::from("tests/run-pass"),
         build_base: env::temp_dir(),
-        aux_base: PathBuf::from("aux-base"),
-        stage_id: "stage3".to_owned(),
+        stage_id: "stage-id".to_owned(),
         mode: Mode::RunPass,
         run_ignored: false,
         filter: None,
@@ -63,13 +68,18 @@ pub fn default_config() -> Config {
         host: "(none)".to_owned(),
         gdb_version: None,
         lldb_version: None,
-        lldb_python_dir: None,
         android_cross_path: PathBuf::from("android-cross-path"),
         adb_path: "adb-path".to_owned(),
         adb_test_dir: "adb-test-dir/target".to_owned(),
         adb_device_status: false,
+        lldb_python_dir: None,
         verbose: false,
         quiet: false,
+        cc: "cc".to_string(),
+        cxx: "cxx".to_string(),
+        cflags: "cflags".to_string(),
+        llvm_components: "llvm-components".to_string(),
+        llvm_cxxflags: "llvm-cxxflags".to_string(),
     }
 }
 
@@ -120,7 +130,10 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
-        nocapture: env::var("RUST_TEST_NOCAPTURE").is_ok(),
+        nocapture: match env::var("RUST_TEST_NOCAPTURE") {
+            Ok(val) => &val != "0",
+            Err(_) => false
+        },
         color: test::AutoColor,
     }
 }
@@ -214,7 +227,7 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
-    let early_props = header::early_props(config, &testpaths.file);
+    let early_props = EarlyProps::from_file(config, &testpaths.file);
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
