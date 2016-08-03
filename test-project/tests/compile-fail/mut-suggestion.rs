@@ -17,14 +17,14 @@ impl S {
 }
 
 fn func(arg: S) {
-    //~^ HELP use `mut` as shown
-    //~| SUGGESTION fn func(mut arg: S) {
+    //~^ NOTE use `mut arg` here to make mutable
     arg.mutate(); //~ ERROR cannot borrow immutable argument
+                  //~| NOTE cannot borrow mutably
 }
 
 fn main() {
     let local = S;
-    //~^ HELP use `mut` as shown
-    //~| SUGGESTION let mut local = S;
+    //~^ NOTE use `mut local` here to make mutable
     local.mutate(); //~ ERROR cannot borrow immutable local variable
+                    //~| NOTE cannot borrow mutably
 }
