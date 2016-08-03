@@ -149,6 +149,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                     line_num: span.line_start,
                     kind: kind,
                     msg: msg,
+                    count: None,
                 }
             );
         }
@@ -160,6 +161,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                     line_num: span.line_start,
                     kind: None,
                     msg: with_code(span, next_line),
+                    count: None,
                 }
             );
         }
@@ -174,7 +176,8 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                 Error {
                     line_num: start_line + index,
                     kind: Some(ErrorKind::Suggestion),
-                    msg: line.to_string()
+                    msg: line.to_string(),
+                    count: None,
                 }
             );
         }
@@ -196,7 +199,8 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
         expected_errors.push(Error {
             line_num: span.line_start,
             kind: Some(ErrorKind::Note),
-            msg: span.label.clone().unwrap()
+            msg: span.label.clone().unwrap(),
+            count: None,
         });
     }
 
@@ -215,6 +219,7 @@ fn push_backtrace(expected_errors: &mut Vec<Error>,
                 line_num: expansion.span.line_start,
                 kind: Some(ErrorKind::Note),
                 msg: format!("in this expansion of {}", expansion.macro_decl_name),
+                count: None,
             }
         );
     }

@@ -61,6 +61,10 @@ pub struct Error {
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
     pub msg: String,
+    /// We can expect a specific number of sub-spans.
+    /// This count is used only for expected errors.
+    /// `None` when multiple actual messages on the same line should be treated as one.
+    pub count: Option<u32>,
 }
 
 #[derive(PartialEq, Debug)]
