@@ -1015,13 +1015,14 @@ actual:\n\
         let mut unexpected = 0;
         let mut not_found = 0;
         let mut found = vec![false; expected_errors.len()];
+        let mut counts_expected = expected_errors.iter().map(|ee| ee.count).collect::<Vec<_>>();
         for actual_error in &actual_errors {
             let opt_index =
                 expected_errors
                 .iter()
                 .enumerate()
                 .position(|(index, expected_error)| {
-                    !found[index] &&
+                    counts_expected[index] != Some(0) &&
                         actual_error.line_num == expected_error.line_num &&
                         (expected_error.kind.is_none() ||
                          actual_error.kind == expected_error.kind) &&
@@ -1031,8 +1032,11 @@ actual:\n\
             match opt_index {
                 Some(index) => {
                     // found a match, everybody is happy
-                    assert!(!found[index]);
                     found[index] = true;
+                    if let &mut Some(ref mut count) = &mut counts_expected[index] {
+                        assert!(*count != 0);
+                        *count -= 1;
+                    }
                 }
 
                 None => {
@@ -1053,7 +1057,8 @@ actual:\n\
 
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
-            if !found[index] {
+            let count_is_good = counts_expected[index] == None || counts_expected[index] == Some(0);
+            if !found[index] || !count_is_good {
                 self.error(
                     &format!("{}:{}: expected {} not found: {}",
                              file_name,

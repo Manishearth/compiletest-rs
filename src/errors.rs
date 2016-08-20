@@ -61,6 +61,10 @@ pub struct Error {
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
     pub msg: String,
+    /// We can expect a specific number of sub-spans.
+    /// This count is used only for expected errors.
+    /// `None` when multiple actual messages on the same line should be treated as one.
+    pub count: Option<u32>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -124,24 +128,38 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
     };
     let kind_start = start + tag.len() + adjusts + (follow as usize);
-    let (kind, msg);
-    match
-        line[kind_start..].split_whitespace()
-                          .next()
-                          .expect("Encountered unexpected empty comment")
-                          .parse::<ErrorKind>()
-    {
+    let (kind, msg, count);
+    let kind_str = line[kind_start..].trim_left()
+                                     .chars()
+                                     .take_while(|c| !c.is_whitespace() && *c != '*')
+                                     .collect::<String>();
+    match kind_str.parse::<ErrorKind>() {
         Ok(k) => {
-            // If we find `//~ ERROR foo` or something like that:
+            // If we find `//~ ERROR foo` or `//~ ERROR*9 foo` something like that:
             kind = Some(k);
-            let letters = line[kind_start..].chars();
-            msg = letters.skip_while(|c| c.is_whitespace())
-                         .skip_while(|c| !c.is_whitespace())
-                         .collect::<String>();
+            let rest = line[kind_start..].trim_left()
+                                         .chars()
+                                         .skip_while(|c| !c.is_whitespace() && *c != '*')
+                                         .collect::<String>();
+            if rest.starts_with('*') {
+                // We found `//~ ERROR*9 foo`
+                let count_str = rest.chars().skip(1)
+                                            .take_while(|c| c.is_digit(10))
+                                            .collect::<String>();
+                count = Some(count_str.parse::<u32>().expect("Incorrect message count"));
+                msg = rest.chars().skip(1)
+                                  .skip_while(|c| c.is_digit(10))
+                                  .collect::<String>();
+            } else {
+                // We found `//~ ERROR foo`
+                count = None;
+                msg = rest;
+            }
         }
         Err(_) => {
             // Otherwise we found `//~ foo`:
             kind = None;
+            count = None;
             let letters = line[kind_start..].chars();
             msg = letters.skip_while(|c| c.is_whitespace())
                          .collect::<String>();
@@ -163,7 +181,12 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
 
     debug!("line={} tag={:?} which={:?} kind={:?} msg={:?}",
            line_num, tag, which, kind, msg);
-    Some((which, Error { line_num: line_num,
-                         kind: kind,
-                         msg: msg, }))
+    Some((which,
+          Error {
+              line_num: line_num,
+              kind: kind,
+              msg: msg,
+              count: count,
+          }
+    ))
 }
