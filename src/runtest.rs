@@ -11,7 +11,7 @@
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
-use common::{Incremental, RunMake, Ui};
+use common::{Incremental, RunMake, Ui, MirOpt};
 use errors::{self, ErrorKind, Error};
 use json;
 use header::TestProps;
@@ -117,6 +117,7 @@ impl<'test> TestCx<'test> {
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
             Ui => self.run_ui_test(),
+            MirOpt => self.run_mir_opt_test(),
         }
     }
 
@@ -135,10 +136,6 @@ impl<'test> TestCx<'test> {
         }
 
         self.check_correct_failure_status(&proc_res);
-
-        if proc_res.status.success() {
-            self.fatal("process did not return an error status");
-        }
 
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
@@ -198,6 +195,11 @@ impl<'test> TestCx<'test> {
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
+        if !expected_errors.is_empty() {
+            self.check_expected_errors(expected_errors, &proc_res);
         }
 
         let proc_res = self.exec_compiled_test();
@@ -976,7 +978,7 @@ actual:\n\
 
     fn check_no_compiler_crash(&self, proc_res: &ProcRes) {
         for line in proc_res.stderr.lines() {
-            if line.starts_with("error: internal compiler error:") {
+            if line.contains("error: internal compiler error") {
                 self.fatal_proc_rec("compiler encountered internal error", proc_res);
             }
         }
@@ -995,7 +997,8 @@ actual:\n\
     fn check_expected_errors(&self,
                              expected_errors: Vec<errors::Error>,
                              proc_res: &ProcRes) {
-        if proc_res.status.success() {
+        if proc_res.status.success() &&
+            expected_errors.iter().any(|x| x.kind == Some(ErrorKind::Error)) {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
@@ -1012,8 +1015,7 @@ actual:\n\
 
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&file_name, &proc_res.stderr, &proc_res);
-        let mut unexpected = 0;
-        let mut not_found = 0;
+        let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in &actual_errors {
             let opt_index =
@@ -1045,12 +1047,13 @@ actual:\n\
                                      .map_or(String::from("message"),
                                              |k| k.to_string()),
                                      actual_error.msg));
-                        unexpected += 1;
+                        unexpected.push(actual_error.clone());
                     }
                 }
             }
         }
 
+        let mut not_found = Vec::new();
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
             if !found[index] {
@@ -1062,18 +1065,22 @@ actual:\n\
                              .map_or("message".into(),
                                      |k| k.to_string()),
                              expected_error.msg));
-                not_found += 1;
+                not_found.push(expected_error.clone());
             }
         }
 
-        if unexpected > 0 || not_found > 0 {
+        if unexpected.len() > 0 || not_found.len() > 0 {
             self.error(
                 &format!("{} unexpected errors found, {} expected errors not found",
-                         unexpected, not_found));
+                         unexpected.len(), not_found.len()));
             print!("status: {}\ncommand: {}\n",
                    proc_res.status, proc_res.cmdline);
-            println!("actual errors (from JSON output): {:#?}\n", actual_errors);
-            println!("expected errors (from test file): {:#?}\n", expected_errors);
+            if unexpected.len() > 0 {
+                println!("unexpected errors (from JSON output): {:#?}\n", unexpected);
+            }
+            if not_found.len() > 0 {
+                println!("not found errors (from test file): {:#?}\n", not_found);
+            }
             panic!();
         }
     }
@@ -1319,22 +1326,37 @@ actual:\n\
         match self.config.mode {
             CompileFail |
             ParseFail |
+            RunPass |
             Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
                 if self.props.error_patterns.is_empty() {
                     args.extend(["--error-format",
-                                 "json",
-                                 "-Z",
-                                 "unstable-options"]
+                                 "json"]
                                 .iter()
                                 .map(|s| s.to_string()));
                 }
             }
+            MirOpt => {
+                args.extend(["-Z",
+                             "dump-mir=all",
+                             "-Z",
+                             "mir-opt-level=3",
+                             "-Z"]
+                            .iter()
+                            .map(|s| s.to_string()));
 
+
+                let mir_dump_dir = self.get_mir_dump_dir();
+                self.create_dir_racy(mir_dump_dir.as_path());
+                let mut dir_opt = "dump-mir-dir=".to_string();
+                dir_opt.push_str(mir_dump_dir.to_str().unwrap());
+                debug!("dir_opt: {:?}", dir_opt);
+
+                args.push(dir_opt);
+            }
             RunFail |
-            RunPass |
             RunPassValgrind |
             Pretty |
             DebugInfoGdb |
@@ -1522,7 +1544,7 @@ actual:\n\
 
     /// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
     ///
-    /// ```rust,ignore
+    /// ```ignore
     ///     <output>/foo/bar-stage1
     /// ```
     fn output_base_name(&self) -> PathBuf {
@@ -1956,7 +1978,10 @@ actual:\n\
         // runs.
         let incremental_dir = self.incremental_dir();
         if incremental_dir.exists() {
-            fs::remove_dir_all(&incremental_dir).unwrap();
+            // Canonicalizing the path will convert it to the //?/ format
+            // on Windows, which enables paths longer than 260 character
+            let canonicalized = incremental_dir.canonicalize().unwrap();
+            fs::remove_dir_all(canonicalized).unwrap();
         }
         fs::create_dir_all(&incremental_dir).unwrap();
 
@@ -1994,6 +2019,7 @@ actual:\n\
         // Add an extra flag pointing at the incremental directory.
         let mut revision_props = self.props.clone();
         revision_props.incremental_dir = Some(incremental_dir);
+        revision_props.compile_flags.push(String::from("-Zincremental-info"));
 
         let revision_cx = TestCx {
             config: self.config,
@@ -2020,7 +2046,7 @@ actual:\n\
 
     /// Directory where incremental work products are stored.
     fn incremental_dir(&self) -> PathBuf {
-        self.output_base_name().with_extension("incremental")
+        self.output_base_name().with_extension("inc")
     }
 
     fn run_rmake_test(&self) {
@@ -2105,7 +2131,7 @@ actual:\n\
                     } else {
                         Err(e)
                     }
-                }))
+                }));
             }
         }
         fs::remove_dir(path)
@@ -2141,6 +2167,100 @@ actual:\n\
             self.fatal_proc_rec(&format!("{} errors occurred comparing output.", errors),
                                 &proc_res);
         }
+    }
+
+    fn run_mir_opt_test(&self) {
+        let proc_res = self.compile_test();
+
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        let proc_res = self.exec_compiled_test();
+
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("test run failed!", &proc_res);
+        }
+        self.check_mir_dump();
+    }
+
+    fn check_mir_dump(&self) {
+        let mut test_file_contents = String::new();
+        fs::File::open(self.testpaths.file.clone()).unwrap()
+                                                   .read_to_string(&mut test_file_contents)
+                                                   .unwrap();
+        if let Some(idx) =  test_file_contents.find("// END RUST SOURCE") {
+            let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
+            let tests_text_str = String::from(tests_text);
+            let mut curr_test : Option<&str> = None;
+            let mut curr_test_contents = Vec::new();
+            for l in tests_text_str.lines() {
+                debug!("line: {:?}", l);
+                if l.starts_with("// START ") {
+                    let (_, t) = l.split_at("// START ".len());
+                    curr_test = Some(t);
+                } else if l.starts_with("// END") {
+                    let (_, t) = l.split_at("// END ".len());
+                    if Some(t) != curr_test {
+                        panic!("mismatched START END test name");
+                    }
+                    self.compare_mir_test_output(curr_test.unwrap(), &curr_test_contents);
+                    curr_test = None;
+                    curr_test_contents.clear();
+                } else if l.is_empty() {
+                    // ignore
+                } else if l.starts_with("// ") {
+                    let (_, test_content) = l.split_at("// ".len());
+                    curr_test_contents.push(test_content);
+                }
+            }
+        }
+    }
+
+    fn compare_mir_test_output(&self, test_name: &str, expected_content: &Vec<&str>) {
+        let mut output_file = PathBuf::new();
+        output_file.push(self.get_mir_dump_dir());
+        output_file.push(test_name);
+        debug!("comparing the contests of: {:?}", output_file);
+        debug!("with: {:?}", expected_content);
+
+        let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
+        let mut dumped_string = String::new();
+        dumped_file.read_to_string(&mut dumped_string).unwrap();
+        let mut dumped_lines = dumped_string.lines().filter(|l| !l.is_empty());
+        let mut expected_lines = expected_content.iter().filter(|l| !l.is_empty());
+
+        // We expect each non-empty line from expected_content to appear
+        // in the dump in order, but there may be extra lines interleaved
+        while let Some(expected_line) = expected_lines.next() {
+            let e_norm = normalize_mir_line(expected_line);
+            if e_norm.is_empty() {
+                continue;
+            };
+            let mut found = false;
+            while let Some(dumped_line) = dumped_lines.next() {
+                let d_norm = normalize_mir_line(dumped_line);
+                debug!("found: {:?}", d_norm);
+                debug!("expected: {:?}", e_norm);
+                if e_norm == d_norm {
+                    found = true;
+                    break;
+                };
+            }
+            if !found {
+                panic!("ran out of mir dump output to match against");
+            }
+        }
+    }
+
+    fn get_mir_dump_dir(&self) -> PathBuf {
+        let mut mir_dump_dir = PathBuf::from(self.config.build_base
+                                                    .as_path()
+                                                    .to_str()
+                                                    .unwrap());
+        debug!("input_file: {:?}", self.testpaths.file);
+        mir_dump_dir.push(self.testpaths.file.file_stem().unwrap().to_str().unwrap());
+        mir_dump_dir
     }
 
     fn normalize_output(&self, output: &str) -> String {
@@ -2272,3 +2392,12 @@ enum TargetLocation {
     ThisDirectory(PathBuf),
 }
 
+fn normalize_mir_line(line: &str) -> String {
+    let no_comments = if let Some(idx) = line.find("//") {
+        let (l, _) = line.split_at(idx);
+        l
+    } else {
+        line
+    };
+    no_comments.replace(char::is_whitespace, "")
+}
