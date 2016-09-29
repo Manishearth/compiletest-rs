@@ -138,6 +138,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         },
         color: test::AutoColor,
         test_threads: None,
+        skip: vec![],
     }
 }
 
