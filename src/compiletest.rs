@@ -61,6 +61,7 @@ pub fn default_config() -> Config {
         mode: Mode::RunPass,
         run_ignored: false,
         filter: None,
+        filter_exact: false,
         logfile: None,
         runtool: None,
         host_rustcflags: None,
@@ -128,6 +129,7 @@ pub fn run_tests(config: &Config) {
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
+        filter_exact: config.filter_exact,
         run_ignored: config.run_ignored,
         quiet: config.quiet,
         logfile: config.logfile.clone(),
@@ -140,6 +142,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         color: test::AutoColor,
         test_threads: None,
         skip: vec![],
+        list: false,
     }
 }
 
