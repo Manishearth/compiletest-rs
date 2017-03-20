@@ -149,8 +149,14 @@ pub struct Config {
     // Host triple for the compiler being invoked
     pub host: String,
 
-    // Version of GDB
-    pub gdb_version: Option<String>,
+    // Path to / name of the GDB executable
+    pub gdb: Option<String>,
+
+    // Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
+    pub gdb_version: Option<u32>,
+
+    // Whether GDB has native rust support
+    pub gdb_native_rust: bool,
 
     // Version of LLDB
     pub lldb_version: Option<String>,
@@ -178,6 +184,9 @@ pub struct Config {
 
     // Print one character per test instead of one line
     pub quiet: bool,
+
+    // where to find the qemu test client process, if we're using it
+    pub qemu_test_client: Option<PathBuf>,
 
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
