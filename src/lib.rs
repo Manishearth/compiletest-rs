@@ -67,7 +67,7 @@ pub fn default_config() -> Config {
         host_rustcflags: None,
         target_rustcflags: None,
         target: host_triple().to_owned(),
-        host: "(none)".to_owned(),
+        host: host_triple().to_owned(),
         gdb_version: None,
         lldb_version: None,
         llvm_version: None,
