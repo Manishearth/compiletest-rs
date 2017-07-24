@@ -1557,7 +1557,7 @@ actual:\n\
 
     /// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
     ///
-    /// ```ignore
+    /// ```text
     ///     <output>/foo/bar-stage1
     /// ```
     fn output_base_name(&self) -> PathBuf {

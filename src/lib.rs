@@ -31,7 +31,6 @@ use common::{Config, Mode};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 use test::TestPaths;
 use std::borrow::ToOwned;
-use rustc::session::config::host_triple;
 
 use self::header::EarlyProps;
 
@@ -44,47 +43,10 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
+pub use common::ConfigBuilder;
+
 pub fn default_config() -> Config {
-    Config {
-        compile_lib_path: PathBuf::from(""),
-        run_lib_path: PathBuf::from(""),
-        rustc_path: PathBuf::from("rustc"),
-        rustdoc_path: PathBuf::from("rustdoc-path"),
-        lldb_python: "python".to_owned(),
-        docck_python: "docck-python".to_owned(),
-        valgrind_path: None,
-        force_valgrind: false,
-        llvm_filecheck: None,
-        src_base: PathBuf::from("tests/run-pass"),
-        build_base: env::temp_dir(),
-        stage_id: "stage-id".to_owned(),
-        mode: Mode::RunPass,
-        run_ignored: false,
-        filter: None,
-        filter_exact: false,
-        logfile: None,
-        runtool: None,
-        host_rustcflags: None,
-        target_rustcflags: None,
-        target: host_triple().to_owned(),
-        host: host_triple().to_owned(),
-        gdb_version: None,
-        lldb_version: None,
-        llvm_version: None,
-        android_cross_path: PathBuf::from("android-cross-path"),
-        adb_path: "adb-path".to_owned(),
-        adb_test_dir: "adb-test-dir/target".to_owned(),
-        adb_device_status: false,
-        lldb_python_dir: None,
-        verbose: false,
-        quiet: false,
-        cc: "cc".to_string(),
-        cxx: "cxx".to_string(),
-        cflags: "cflags".to_string(),
-        llvm_components: "llvm-components".to_string(),
-        llvm_cxxflags: "llvm-cxxflags".to_string(),
-        nodejs: None,
-    }
+    Config::default()
 }
 
 pub fn run_tests(config: &Config) {

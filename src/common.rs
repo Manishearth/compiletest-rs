@@ -9,9 +9,11 @@
 // except according to those terms.
 pub use self::Mode::*;
 
+use std::env;
 use std::fmt;
 use std::str::FromStr;
 use std::path::PathBuf;
+use rustc;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -187,4 +189,84 @@ pub struct Config {
     pub llvm_components: String,
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        let platform = rustc::session::config::host_triple().to_string();
+
+        Config {
+            compile_lib_path: PathBuf::from(""),
+            run_lib_path: PathBuf::from(""),
+            rustc_path: PathBuf::from("rustc"),
+            rustdoc_path: PathBuf::from("rustdoc-path"),
+            lldb_python: "python".to_owned(),
+            docck_python: "docck-python".to_owned(),
+            valgrind_path: None,
+            force_valgrind: false,
+            llvm_filecheck: None,
+            src_base: PathBuf::from("tests/run-pass"),
+            build_base: env::temp_dir(),
+            stage_id: "stage-id".to_owned(),
+            mode: Mode::RunPass,
+            run_ignored: false,
+            filter: None,
+            filter_exact: false,
+            logfile: None,
+            runtool: None,
+            host_rustcflags: None,
+            target_rustcflags: None,
+            target: platform.clone(),
+            host: platform.clone(),
+            gdb_version: None,
+            lldb_version: None,
+            llvm_version: None,
+            android_cross_path: PathBuf::from("android-cross-path"),
+            adb_path: "adb-path".to_owned(),
+            adb_test_dir: "adb-test-dir/target".to_owned(),
+            adb_device_status: false,
+            lldb_python_dir: None,
+            verbose: false,
+            quiet: false,
+            cc: "cc".to_string(),
+            cxx: "cxx".to_string(),
+            cflags: "cflags".to_string(),
+            llvm_components: "llvm-components".to_string(),
+            llvm_cxxflags: "llvm-cxxflags".to_string(),
+            nodejs: None,
+        }
+    }
+}
+
+/// Builder pattern for the `Config` struct
+#[derive(Default)]
+pub struct ConfigBuilder {
+    target_rustcflags: Option<String>,
+}
+
+impl ConfigBuilder {
+    /// Consume `self` and spit out the built `Config`
+    pub fn finalize(self) -> Config {
+        let mut c = Config::default();
+        c.target_rustcflags = self.target_rustcflags;
+
+        c
+    }
+
+    /// Link with the crate's dependencies in addition to the crate itself
+    pub fn link_deps(mut self) -> ConfigBuilder {
+        // Dependencies can be found in the DYLD_LIBRARY_PATH environment variable. Throw
+        // everything there into the link flags
+        let dyld_paths = env::var("DYLD_LIBRARY_PATH")
+            .expect("Cannot link to dependencies. DYLD_LIBRARY_PATH not set");
+
+        // Append to current flags if any are set, otherwise make new String
+        let mut flags = self.target_rustcflags.unwrap_or(String::new());
+        for p in dyld_paths.split(":") {
+            flags += &*format!(" -L {}", p);
+        }
+
+        self.target_rustcflags = Some(flags);
+        self
+    }
 }
