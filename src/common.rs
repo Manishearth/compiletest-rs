@@ -11,6 +11,7 @@ pub use self::Mode::*;
 
 use std::env;
 use std::fmt;
+use std::mem;
 use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
@@ -191,6 +192,27 @@ pub struct Config {
     pub nodejs: Option<String>,
 }
 
+impl Config {
+    /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
+    pub fn link_deps(&mut self) {
+        // Dependencies can be found in the DYLD_LIBRARY_PATH environment variable. Throw
+        // everything there into the link flags
+        let dyld_paths = env::var("DYLD_LIBRARY_PATH")
+            .expect("Cannot link to dependencies. DYLD_LIBRARY_PATH not set");
+
+        // Move the flags out so we can mutate them and put them back in
+        let flags_opt = mem::replace(&mut self.target_rustcflags, None);
+
+        // Append to current flags if any are set, otherwise make new String
+        let mut flags = flags_opt.unwrap_or(String::new());
+        for p in dyld_paths.split(":") {
+            flags += &*format!(" -L {} ", p);
+        }
+
+        self.target_rustcflags = Some(flags);
+    }
+}
+
 impl Default for Config {
     fn default() -> Config {
         let platform = rustc::session::config::host_triple().to_string();
@@ -235,38 +257,5 @@ impl Default for Config {
             llvm_cxxflags: "llvm-cxxflags".to_string(),
             nodejs: None,
         }
-    }
-}
-
-/// Builder pattern for the `Config` struct
-#[derive(Default)]
-pub struct ConfigBuilder {
-    target_rustcflags: Option<String>,
-}
-
-impl ConfigBuilder {
-    /// Consume `self` and spit out the built `Config`
-    pub fn finalize(self) -> Config {
-        let mut c = Config::default();
-        c.target_rustcflags = self.target_rustcflags;
-
-        c
-    }
-
-    /// Link with the crate's dependencies in addition to the crate itself
-    pub fn link_deps(mut self) -> ConfigBuilder {
-        // Dependencies can be found in the DYLD_LIBRARY_PATH environment variable. Throw
-        // everything there into the link flags
-        let dyld_paths = env::var("DYLD_LIBRARY_PATH")
-            .expect("Cannot link to dependencies. DYLD_LIBRARY_PATH not set");
-
-        // Append to current flags if any are set, otherwise make new String
-        let mut flags = self.target_rustcflags.unwrap_or(String::new());
-        for p in dyld_paths.split(":") {
-            flags += &*format!(" -L {}", p);
-        }
-
-        self.target_rustcflags = Some(flags);
-        self
     }
 }

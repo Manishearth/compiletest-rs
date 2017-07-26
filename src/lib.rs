@@ -27,7 +27,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use common::{Config, Mode};
+use common::Mode;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 use test::TestPaths;
 use std::borrow::ToOwned;
@@ -43,8 +43,9 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
-pub use common::ConfigBuilder;
+pub use common::Config;
 
+#[deprecated(since="0.2.9", note="Use Config::default() instead")]
 pub fn default_config() -> Config {
     Config::default()
 }
