@@ -11,7 +11,6 @@ pub use self::Mode::*;
 
 use std::env;
 use std::fmt;
-use std::mem;
 use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
@@ -193,18 +192,13 @@ pub struct Config {
 }
 
 impl Config {
-
     /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
     pub fn link_deps(&mut self) {
-        // The linked library path env var name depends on the target OS. I'm not certain if this
-        // covers all the cases adequately.
-        let (varname, path_delim) = if cfg!(any(target_os = "macos", target_os = "ios")) {
-            ("DYLD_LIBRARY_PATH", ":")
-        } else if cfg!(target_os = "windows") {
-            ("PATH", ";")
-        } else {
-            ("LD_LIBRARY_PATH", ":")
-        };
+        // The linked library path env var name depends on the target OS. Code copied from
+        // https://github.com/rust-lang/cargo/blob/master/src/cargo/util/paths.rs#L22-L26
+        let varname = if cfg!(windows) { "PATH" }
+                      else if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" }
+                      else { "LD_LIBRARY_PATH" };
 
         // Dependencies can be found in the environment variable. Throw everything there into the
         // link flags
@@ -212,13 +206,11 @@ impl Config {
             panic!("Cannot link to dependencies. Problem with env var '{}': {:?}", varname, e)
         });
 
-        // Move the flags out so we can mutate them and put them back in
-        let flags_opt = mem::replace(&mut self.target_rustcflags, None);
-
         // Append to current flags if any are set, otherwise make new String
-        let mut flags = flags_opt.unwrap_or(String::new());
-        for p in lib_paths.split(path_delim) {
-            flags += &*format!(" -L {} ", p);
+        let mut flags = self.target_rustcflags.take().unwrap_or_else(String::new);
+        for p in env::split_paths(&lib_paths) {
+            flags += " -L ";
+            flags += p.to_str().unwrap(); // Can't fail. We already know this is unicode
         }
 
         self.target_rustcflags = Some(flags);
