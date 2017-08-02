@@ -27,11 +27,11 @@ extern crate compiletest_rs as compiletest;
 use std::path::PathBuf;
 
 fn run_mode(mode: &'static str) {
-    let mut config = compiletest::default_config();
-    let cfg_mode = mode.parse().ok().expect("Invalid mode");
+    let mut config = compiletest::Config::default();
 
-    config.mode = cfg_mode;
+    config.mode = mode.parse().expect("Invalid mode");
     config.src_base = PathBuf::from(format!("tests/{}", mode));
+    config.link_deps(); // Populate config.target_rustcflags with dependencies on the path
 
     compiletest::run_tests(&config);
 }
@@ -49,15 +49,28 @@ is for the `compile-fail` mode the test runner looks for the
 `tests/compile-fail` folder.
 
 Adding flags to the Rust compiler is a matter of assigning the correct field in
-the config.
+the config. The most common flag to populate is the
+`target_rustcflags` to include the link dependencies on the path.
 
 ```rust
+// NOTE! This is the manual way of adding flags
 config.target_rustcflags = Some("-L target/debug".to_string());
 ```
 
 This is useful (and necessary) for library development. Note that other
 secondary library dependencies may have their build artifacts placed in
-different (non-obvious) locations and these locations must also be added.
+different (non-obvious) locations and these locations must also be
+added.
+
+For convenience, `Config` provides a `link_deps()` method that
+populates `target_rustcflags` with all the dependencies found in the
+`PATH` variable (which is OS specific). For most cases, it should be
+sufficient to do:
+
+```rust
+let mut config = compiletest::Config::default();
+config.link_deps();
+```
 
 Example
 -------
@@ -69,10 +82,3 @@ TODO
 ----
  - The `run-pass` mode is strictly not necessary since it's baked right into
    Cargo, but I haven't bothered to take it out
- - Find out if it is possible to capture the build flags during
-   compilation. Then it should be possible to for `compiletest-rs` to capture
-   (among other things) build dependencies (like `-L`). In the case a library
-   would depend on a second library, the generated `.rlib` for the second
-   library may end up in non-obvious places (and missing from the build
-   path). Currently the work-around is to explicitly list the search paths as
-   extra rustc flags.
