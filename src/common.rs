@@ -224,8 +224,7 @@ impl Config {
 fn tempdir() -> PathBuf {
     tempdir::TempDir::new("compiletest")
         .expect("failed to create temporary directory")
-        .path()
-        .to_path_buf()
+        .into_path()
 }
 
 #[cfg(not(feature = "tmp"))]
