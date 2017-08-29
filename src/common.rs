@@ -15,6 +15,9 @@ use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
 
+#[cfg(feature = "tmp")]
+use tempdir;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
@@ -217,6 +220,19 @@ impl Config {
     }
 }
 
+#[cfg(feature = "tmp")]
+fn tempdir() -> PathBuf {
+    tempdir::TempDir::new("compiletest")
+        .expect("failed to create temporary directory")
+        .path()
+        .to_path_buf()
+}
+
+#[cfg(not(feature = "tmp"))]
+fn tempdir() -> PathBuf {
+    env::temp_dir()
+}
+
 impl Default for Config {
     fn default() -> Config {
         let platform = rustc::session::config::host_triple().to_string();
@@ -232,7 +248,7 @@ impl Default for Config {
             force_valgrind: false,
             llvm_filecheck: None,
             src_base: PathBuf::from("tests/run-pass"),
-            build_base: env::temp_dir(),
+            build_base: tempdir(),
             stage_id: "stage-id".to_owned(),
             mode: Mode::RunPass,
             run_ignored: false,
