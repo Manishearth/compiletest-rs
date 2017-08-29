@@ -19,6 +19,8 @@ extern crate test;
 extern crate rustc;
 extern crate rustc_serialize;
 
+#[cfg(feature = "tmp")] extern crate tempdir;
+
 #[macro_use]
 extern crate log;
 
