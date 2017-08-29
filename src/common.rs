@@ -15,9 +15,6 @@ use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
 
-#[cfg(feature = "tmp")]
-use tempdir;
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
@@ -218,19 +215,29 @@ impl Config {
 
         self.target_rustcflags = Some(flags);
     }
+
+    #[cfg(feature = "tmp")]
+    pub fn tempdir(mut self) -> config_tempdir::ConfigWithTemp {
+        use tempdir;
+        let tmp = tempdir::TempDir::new("compiletest")
+            .expect("failed to create temporary directory");
+        self.build_base = tmp.path().to_owned();
+        config_tempdir::ConfigWithTemp {
+            config: self,
+            tempdir: tmp,
+        }
+    }
 }
 
 #[cfg(feature = "tmp")]
-fn tempdir() -> PathBuf {
-    tempdir::TempDir::new("compiletest")
-        .expect("failed to create temporary directory")
-        .into_path()
+mod config_tempdir {
+    use tempdir;
+    pub struct ConfigWithTemp {
+        pub config: super::Config,
+        pub tempdir: tempdir::TempDir,
+    }
 }
 
-#[cfg(not(feature = "tmp"))]
-fn tempdir() -> PathBuf {
-    env::temp_dir()
-}
 
 impl Default for Config {
     fn default() -> Config {
@@ -247,7 +254,7 @@ impl Default for Config {
             force_valgrind: false,
             llvm_filecheck: None,
             src_base: PathBuf::from("tests/run-pass"),
-            build_base: tempdir(),
+            build_base: env::temp_dir(),
             stage_id: "stage-id".to_owned(),
             mode: Mode::RunPass,
             run_ignored: false,
