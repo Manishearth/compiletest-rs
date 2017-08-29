@@ -10,8 +10,9 @@ fn run_mode(mode: &'static str) {
     config.mode = cfg_mode;
     config.src_base = PathBuf::from(format!("tests/{}", mode));
     config.link_deps();
+    let wrapped_config = config.tempdir();
 
-    compiletest::run_tests(&config);
+    compiletest::run_tests(&wrapped_config.config);
 }
 
 #[test]
