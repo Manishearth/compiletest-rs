@@ -12,39 +12,44 @@ use std::env;
 use common::Config;
 
 /// Conversion table from triple OS name to Rust SYSNAME
-const OS_TABLE: &'static [(&'static str, &'static str)] = &[("android", "android"),
-                                                            ("bitrig", "bitrig"),
-                                                            ("darwin", "macos"),
-                                                            ("dragonfly", "dragonfly"),
-                                                            ("freebsd", "freebsd"),
-                                                            ("haiku", "haiku"),
-                                                            ("ios", "ios"),
-                                                            ("linux", "linux"),
-                                                            ("mingw32", "windows"),
-                                                            ("netbsd", "netbsd"),
-                                                            ("openbsd", "openbsd"),
-                                                            ("win32", "windows"),
-                                                            ("windows", "windows"),
-                                                            ("solaris", "solaris"),
-                                                            ("emscripten", "emscripten")];
+const OS_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("android", "android"),
+    ("bitrig", "bitrig"),
+    ("darwin", "macos"),
+    ("dragonfly", "dragonfly"),
+    ("freebsd", "freebsd"),
+    ("haiku", "haiku"),
+    ("ios", "ios"),
+    ("linux", "linux"),
+    ("mingw32", "windows"),
+    ("netbsd", "netbsd"),
+    ("openbsd", "openbsd"),
+    ("win32", "windows"),
+    ("windows", "windows"),
+    ("solaris", "solaris"),
+    ("emscripten", "emscripten"),
+];
 
-const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[("aarch64", "aarch64"),
-                                                              ("amd64", "x86_64"),
-                                                              ("arm", "arm"),
-                                                              ("arm64", "aarch64"),
-                                                              ("hexagon", "hexagon"),
-                                                              ("i386", "x86"),
-                                                              ("i686", "x86"),
-                                                              ("mips", "mips"),
-                                                              ("msp430", "msp430"),
-                                                              ("powerpc", "powerpc"),
-                                                              ("powerpc64", "powerpc64"),
-                                                              ("s390x", "s390x"),
-                                                              ("sparc", "sparc"),
-                                                              ("x86_64", "x86_64"),
-                                                              ("xcore", "xcore"),
-                                                              ("asmjs", "asmjs"),
-                                                              ("wasm32", "wasm32")];
+const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("aarch64", "aarch64"),
+    ("amd64", "x86_64"),
+    ("arm", "arm"),
+    ("arm64", "aarch64"),
+    ("hexagon", "hexagon"),
+    ("i386", "x86"),
+    ("i586", "x86"),
+    ("i686", "x86"),
+    ("mips", "mips"),
+    ("msp430", "msp430"),
+    ("powerpc", "powerpc"),
+    ("powerpc64", "powerpc64"),
+    ("s390x", "s390x"),
+    ("sparc", "sparc"),
+    ("x86_64", "x86_64"),
+    ("xcore", "xcore"),
+    ("asmjs", "asmjs"),
+    ("wasm32", "wasm32"),
+];
 
 pub fn get_os(triple: &str) -> &'static str {
     for &(triple_os, os) in OS_TABLE {
@@ -65,6 +70,14 @@ pub fn get_arch(triple: &str) -> &'static str {
 
 pub fn get_env(triple: &str) -> Option<&str> {
     triple.split('-').nth(3)
+}
+
+pub fn get_pointer_width(triple: &str) -> &'static str {
+    if triple.contains("64") || triple.starts_with("s390x") {
+        "64bit"
+    } else {
+        "32bit"
+    }
 }
 
 pub fn make_new_path(path: &str) -> String {

@@ -15,8 +15,12 @@ readme = "README.md"
 name = "compiletest_rs"
 
 [dependencies]
-log = "0.3.5"
+diff = "0.1.10"
+filetime = "0.1"
+getopts = "0.2"
+log = "0.3"
 rustc-serialize = "0.3"
+libc = "0.2"
 tempdir = { version = "0.3", optional = true }
 
 [features]
