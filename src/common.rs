@@ -15,6 +15,8 @@ use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
 
+use test::ColorConfig;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
@@ -93,7 +95,7 @@ pub struct Config {
     pub rustc_path: PathBuf,
 
     /// The rustdoc executable
-    pub rustdoc_path: PathBuf,
+    pub rustdoc_path: Option<PathBuf>,
 
     /// The python executable to use for LLDB
     pub lldb_python: String,
@@ -151,14 +153,23 @@ pub struct Config {
     /// Host triple for the compiler being invoked
     pub host: String,
 
-    /// Version of GDB
-    pub gdb_version: Option<String>,
+    /// Path to / name of the GDB executable
+    pub gdb: Option<String>,
+
+    /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
+    pub gdb_version: Option<u32>,
+
+    /// Whether GDB has native rust support
+    pub gdb_native_rust: bool,
 
     /// Version of LLDB
     pub lldb_version: Option<String>,
 
     /// Version of LLVM
     pub llvm_version: Option<String>,
+
+    /// Is LLVM a system LLVM
+    pub system_llvm: bool,
 
     /// Path to the android tools
     pub android_cross_path: PathBuf,
@@ -180,6 +191,12 @@ pub struct Config {
 
     /// Print one character per test instead of one line
     pub quiet: bool,
+
+    /// Whether to use colors in test.
+    pub color: ColorConfig,
+
+    /// where to find the remote test client process, if we're using it
+    pub remote_test_client: Option<PathBuf>,
 
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
@@ -263,7 +280,7 @@ impl Default for Config {
             compile_lib_path: PathBuf::from(""),
             run_lib_path: PathBuf::from(""),
             rustc_path: PathBuf::from("rustc"),
-            rustdoc_path: PathBuf::from("rustdoc-path"),
+            rustdoc_path: None,
             lldb_python: "python".to_owned(),
             docck_python: "docck-python".to_owned(),
             valgrind_path: None,
@@ -282,9 +299,12 @@ impl Default for Config {
             target_rustcflags: None,
             target: platform.clone(),
             host: platform.clone(),
+            gdb: None,
             gdb_version: None,
+            gdb_native_rust: false,
             lldb_version: None,
             llvm_version: None,
+            system_llvm: false,
             android_cross_path: PathBuf::from("android-cross-path"),
             adb_path: "adb-path".to_owned(),
             adb_test_dir: "adb-test-dir/target".to_owned(),
@@ -292,6 +312,8 @@ impl Default for Config {
             lldb_python_dir: None,
             verbose: false,
             quiet: false,
+            color: ColorConfig::AutoColor,
+            remote_test_client: None,
             cc: "cc".to_string(),
             cxx: "cxx".to_string(),
             cflags: "cflags".to_string(),

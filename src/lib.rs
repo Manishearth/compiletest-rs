@@ -15,6 +15,8 @@
 
 #![deny(unused_imports)]
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+extern crate libc;
 extern crate test;
 extern crate rustc;
 extern crate rustc_serialize;
@@ -23,6 +25,8 @@ extern crate rustc_serialize;
 
 #[macro_use]
 extern crate log;
+extern crate filetime;
+extern crate diff;
 
 use std::env;
 use std::ffi::OsString;
@@ -32,13 +36,11 @@ use std::path::{Path, PathBuf};
 use common::Mode;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 use test::TestPaths;
-use std::borrow::ToOwned;
 
 use self::header::EarlyProps;
 
 pub mod uidiff;
 pub mod json;
-pub mod procsrv;
 pub mod util;
 pub mod header;
 pub mod runtest;
@@ -246,6 +248,16 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     }
 }
 
+fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    let stamp_name = format!("{}-{}.stamp",
+                             testpaths.file.file_name().unwrap()
+                                           .to_str().unwrap(),
+                             config.stage_id);
+    config.build_base.canonicalize()
+          .unwrap_or_else(|_| config.build_base.clone())
+          .join(stamp_name)
+}
+
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
     // Convert a complete path to something like
     //
@@ -265,45 +277,67 @@ pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn
     }))
 }
 
-#[allow(dead_code)]
-fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
-    match full_version_line {
-        Some(ref full_version_line)
-          if !full_version_line.trim().is_empty() => {
-            let full_version_line = full_version_line.trim();
+fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
+    let full_version_line = full_version_line.trim();
 
-            // used to be a regex "(^|[^0-9])([0-9]\.[0-9]+)"
-            for (pos, c) in full_version_line.char_indices() {
-                if !c.is_digit(10) {
-                    continue
-                }
-                if pos + 2 >= full_version_line.len() {
-                    continue
-                }
-                if full_version_line[pos + 1..].chars().next().unwrap() != '.' {
-                    continue
-                }
-                if !full_version_line[pos + 2..].chars().next().unwrap().is_digit(10) {
-                    continue
-                }
-                if pos > 0 && full_version_line[..pos].chars().next_back()
-                                                      .unwrap().is_digit(10) {
-                    continue
-                }
-                let mut end = pos + 3;
-                while end < full_version_line.len() &&
-                      full_version_line[end..].chars().next()
-                                              .unwrap().is_digit(10) {
-                    end += 1;
-                }
-                return Some(full_version_line[pos..end].to_owned());
-            }
-            println!("Could not extract GDB version from line '{}'",
-                     full_version_line);
-            None
-        },
-        _ => None
+    // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
+    // of the ? sections being optional
+
+    // We will parse up to 3 digits for minor and patch, ignoring the date
+    // We limit major to 1 digit, otherwise, on openSUSE, we parse the openSUSE version
+
+    // don't start parsing in the middle of a number
+    let mut prev_was_digit = false;
+    for (pos, c) in full_version_line.char_indices() {
+        if prev_was_digit || !c.is_digit(10) {
+            prev_was_digit = c.is_digit(10);
+            continue
+        }
+
+        prev_was_digit = true;
+
+        let line = &full_version_line[pos..];
+
+        let next_split = match line.find(|c: char| !c.is_digit(10)) {
+            Some(idx) => idx,
+            None => continue, // no minor version
+        };
+
+        if line.as_bytes()[next_split] != b'.' {
+            continue; // no minor version
+        }
+
+        let major = &line[..next_split];
+        let line = &line[next_split + 1..];
+
+        let (minor, patch) = match line.find(|c: char| !c.is_digit(10)) {
+            Some(idx) => if line.as_bytes()[idx] == b'.' {
+                let patch = &line[idx + 1..];
+
+                let patch_len = patch.find(|c: char| !c.is_digit(10))
+                                                       .unwrap_or_else(|| patch.len());
+                let patch = &patch[..patch_len];
+                let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
+
+                (&line[..idx], patch)
+            } else {
+                (&line[..idx], None)
+            },
+            None => (line, None),
+        };
+
+        if major.len() != 1 || minor.is_empty() {
+            continue;
+        }
+
+        let major: u32 = major.parse().unwrap();
+        let minor: u32 = minor.parse().unwrap();
+        let patch: u32 = patch.unwrap_or("0").parse().unwrap();
+
+        return Some(((major * 1000) + minor) * 1000 + patch);
     }
+
+    None
 }
 
 #[allow(dead_code)]
