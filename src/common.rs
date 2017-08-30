@@ -232,9 +232,25 @@ impl Config {
 #[cfg(feature = "tmp")]
 mod config_tempdir {
     use tempdir;
+    use std::ops;
+
     pub struct ConfigWithTemp {
         pub config: super::Config,
         pub tempdir: tempdir::TempDir,
+    }
+
+    impl ops::Deref for ConfigWithTemp {
+        type Target = super::Config;
+
+        fn deref(&self) -> &Self::Target {
+            &self.config
+        }
+    }
+
+    impl ops::DerefMut for ConfigWithTemp {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.config
+        }
     }
 }
 
