@@ -11,6 +11,7 @@ pub use self::Mode::*;
 
 use std::env;
 use std::fmt;
+use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
 use rustc;
@@ -244,6 +245,30 @@ impl Config {
         }
 
         self.target_rustcflags = Some(flags);
+    }
+
+    /// Remove rmeta files from target `deps` directory
+    ///
+    /// These files are created by `cargo check`, and conflict with
+    /// `cargo build` rlib files, causing E0464 for tests which use
+    /// the parent crate.
+    pub fn clean_rmeta(&self) {
+        if self.target_rustcflags.is_some() {
+            for directory in self.target_rustcflags
+                .as_ref()
+                .unwrap()
+                .split_whitespace()
+                .filter(|s| s.ends_with("/deps"))
+            {
+                if let Ok(mut entries) = read_dir(directory) {
+                    while let Some(Ok(entry)) = entries.next() {
+                        if entry.file_name().to_string_lossy().ends_with(".rmeta") {
+                            let _ = remove_file(entry.path());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[cfg(feature = "tmp")]
