@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use rustc;
 
 use test::ColorConfig;
+use runtest::dylib_env_var;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -211,11 +212,7 @@ pub struct Config {
 impl Config {
     /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
     pub fn link_deps(&mut self) {
-        // The linked library path env var name depends on the target OS. Code copied from
-        // https://github.com/rust-lang/cargo/blob/master/src/cargo/util/paths.rs#L22-L26
-        let varname = if cfg!(windows) { "PATH" }
-                      else if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" }
-                      else { "LD_LIBRARY_PATH" };
+        let varname = dylib_env_var();
 
         // Dependencies can be found in the environment variable. Throw everything there into the
         // link flags
