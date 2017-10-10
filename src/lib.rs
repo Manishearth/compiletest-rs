@@ -49,12 +49,6 @@ pub mod errors;
 
 pub use common::Config;
 
-#[deprecated(since="0.2.9",
-             note="Use Config::default() instead. This method will be removed in version 0.3.0")]
-pub fn default_config() -> Config {
-    Config::default()
-}
-
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
         if let DebugInfoGdb = config.mode {
