@@ -71,6 +71,9 @@ let mut config = compiletest::Config::default();
 config.link_deps();
 ```
 
+Note that `link_deps()` should not be used if any of the added paths contain
+spaces, as these are currently not handled correctly.
+
 Example
 -------
 See the `test-project` folder for a complete working example using the
