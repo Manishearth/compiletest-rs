@@ -12,10 +12,11 @@
 
 #![feature(rustc_private)]
 #![feature(test)]
+#![feature(slice_rotate)]
 
 #![deny(unused_imports)]
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(unix)]
 extern crate libc;
 extern crate test;
 extern crate rustc;
@@ -40,12 +41,13 @@ use test::TestPaths;
 use self::header::EarlyProps;
 
 pub mod uidiff;
-pub mod json;
 pub mod util;
+mod json;
 pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
+mod read2;
 
 pub use common::Config;
 
