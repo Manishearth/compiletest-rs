@@ -20,8 +20,10 @@ filetime = "0.1"
 getopts = "0.2"
 log = "0.3"
 rustc-serialize = "0.3"
-libc = "0.2"
 tempdir = { version = "0.3", optional = true }
+
+[target."cfg(unix)".dependencies]
+libc = "0.2"
 
 [target."cfg(windows)".dependencies]
 miow = "0.2"
