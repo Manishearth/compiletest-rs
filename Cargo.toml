@@ -23,5 +23,9 @@ rustc-serialize = "0.3"
 libc = "0.2"
 tempdir = { version = "0.3", optional = true }
 
+[target."cfg(windows)".dependencies]
+miow = "0.2"
+winapi = "0.2"
+
 [features]
 tmp = ["tempdir"]
