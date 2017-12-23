@@ -1603,8 +1603,7 @@ actual:\n\
     }
 
     /// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
-    ///
-    ///     <output>/foo/bar-stage1
+    /// `<output>/foo/bar-stage1`
     fn output_base_name(&self) -> PathBuf {
         let dir = self.config.build_base.join(&self.testpaths.relative_dir);
 
