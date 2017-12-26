@@ -622,7 +622,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
 /// let first = parse_normalization_string(&mut s);
 /// assert_eq!(first, Some("something (32 bits)".to_owned()));
