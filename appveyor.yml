@@ -1,5 +1,4 @@
 environment:
-  RUST_MIN_STACK: 16777216
   matrix:
     - TARGET: x86_64-pc-windows-gnu
       CHANNEL: nightly
