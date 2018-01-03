@@ -34,9 +34,8 @@ use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use common::Mode;
+use common::{Mode, TestPaths};
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
-use test::TestPaths;
 
 use self::header::EarlyProps;
 

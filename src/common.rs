@@ -226,6 +226,13 @@ pub struct Config {
     pub nodejs: Option<String>,
 }
 
+#[derive(Clone)]
+pub struct TestPaths {
+    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub base: PathBuf,         // e.g., compile-test, auxiliary
+    pub relative_dir: PathBuf, // e.g., foo/bar
+}
+
 impl Config {
     /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
     pub fn link_deps(&mut self) {
