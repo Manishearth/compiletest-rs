@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::Config;
+use common::{Config, TestPaths};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
@@ -17,7 +17,6 @@ use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
 use header::TestProps;
-use test::TestPaths;
 use util::logv;
 
 use std::collections::HashMap;
