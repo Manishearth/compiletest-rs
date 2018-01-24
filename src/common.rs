@@ -14,7 +14,6 @@ use std::fmt;
 use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
-use rustc;
 
 use test::ColorConfig;
 use runtest::dylib_env_var;
@@ -319,8 +318,6 @@ mod config_tempdir {
 
 impl Default for Config {
     fn default() -> Config {
-        let platform = rustc::session::config::host_triple().to_string();
-
         Config {
             compile_lib_path: PathBuf::from(""),
             run_lib_path: PathBuf::from(""),
@@ -342,8 +339,8 @@ impl Default for Config {
             runtool: None,
             host_rustcflags: None,
             target_rustcflags: None,
-            target: platform.clone(),
-            host: platform.clone(),
+            target: env!("TARGET").to_string(),
+            host: env!("HOST").to_string(),
             gdb: None,
             gdb_version: None,
             gdb_native_rust: false,
