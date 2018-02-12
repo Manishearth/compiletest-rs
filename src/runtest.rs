@@ -348,7 +348,7 @@ impl<'test> TestCx<'test> {
             .args(&["--unpretty", &pretty_type])
             .args(&["--target", &self.config.target])
             .arg("-L").arg(&aux_dir)
-            .args(self.split_maybe_args(&self.config.target_rustcflags))
+            .args(self.split_maybe_lib_args(&self.config.target_rustcflags))
             .args(&self.props.compile_flags)
             .envs(self.props.exec_env.clone());
 
@@ -404,7 +404,7 @@ actual:\n\
             rustc.args(&["--cfg", revision]);
         }
 
-        rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+        rustc.args(self.split_maybe_lib_args(&self.config.target_rustcflags));
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
@@ -1451,7 +1451,7 @@ actual:\n\
         if self.props.force_host {
             rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
-            rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+            rustc.args(self.split_maybe_lib_args(&self.config.target_rustcflags));
         }
         if let Some(ref linker) = self.config.linker {
             rustc.arg(format!("-Clinker={}", linker));
@@ -1547,6 +1547,25 @@ actual:\n\
                     }).collect()
             }
             None => Vec::new()
+        }
+    }
+
+    // Split library arguments on "-L" to handle paths with spaces properly. Like
+    // split_maybe_args(), empty strings filtered out.
+    fn split_maybe_lib_args(&self, argstr: &Option<String>) -> Vec<String> {
+        if let Some(ref s) = *argstr {
+            s.split("-L")
+                .filter_map(|p| {
+                    let p = p.trim();
+                    if p.is_empty() { None } else { Some(p.to_owned()) }
+                })
+                .fold(Vec::new(), |mut v, arg| {
+                    v.push("-L".to_owned());
+                    v.push(arg);
+                    v
+                })
+        } else {
+            Vec::new()
         }
     }
 
