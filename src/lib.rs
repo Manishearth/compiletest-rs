@@ -10,7 +10,6 @@
 
 #![crate_type = "lib"]
 
-#![feature(rustc_private)]
 #![feature(test)]
 #![feature(slice_rotate)]
 
@@ -19,7 +18,6 @@
 #[cfg(unix)]
 extern crate libc;
 extern crate test;
-extern crate rustc;
 extern crate rustc_serialize;
 
 #[cfg(feature = "tmp")] extern crate tempdir;
