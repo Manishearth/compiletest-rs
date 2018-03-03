@@ -20,7 +20,6 @@
 extern crate libc;
 extern crate test;
 extern crate rustc;
-extern crate rustc_serialize;
 
 #[cfg(feature = "tmp")] extern crate tempdir;
 
@@ -28,6 +27,9 @@ extern crate rustc_serialize;
 extern crate log;
 extern crate filetime;
 extern crate diff;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 use std::env;
 use std::ffi::OsString;
