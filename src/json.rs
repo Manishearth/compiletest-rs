@@ -17,7 +17,7 @@ use runtest::ProcRes;
 // These structs are a subset of the ones found in
 // `syntax::json`.
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct Diagnostic {
     message: String,
     code: Option<DiagnosticCode>,
@@ -27,7 +27,7 @@ struct Diagnostic {
     rendered: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Deserialize, Clone)]
 struct DiagnosticSpan {
     file_name: String,
     line_start: usize,
@@ -40,7 +40,7 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Deserialize, Clone)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code
     span: DiagnosticSpan,
@@ -49,7 +49,7 @@ struct DiagnosticSpanMacroExpansion {
     macro_decl_name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Deserialize, Clone)]
 struct DiagnosticCode {
     /// The code itself.
     code: String,
