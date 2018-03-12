@@ -1,6 +1,6 @@
 [package]
 name = "compiletest_rs"
-version = "0.3.7"
+version = "0.3.8"
 authors = [ "The Rust Project Developers"
           , "Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>"
           , "Manish Goregaokar <manishsmail@gmail.com>"
@@ -18,7 +18,7 @@ name = "compiletest_rs"
 diff = "0.1.10"
 filetime = "0.1"
 getopts = "0.2"
-log = "0.3"
+log = "0.4"
 rustc-serialize = "0.3"
 tempdir = { version = "0.3", optional = true }
 
@@ -26,8 +26,8 @@ tempdir = { version = "0.3", optional = true }
 libc = "0.2"
 
 [target."cfg(windows)".dependencies]
-miow = "0.2"
-winapi = "0.2"
+miow = "0.3"
+winapi = { version = "0.3", features = ["winerror"] }
 
 [features]
 tmp = ["tempdir"]
