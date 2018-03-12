@@ -26,7 +26,7 @@ tempdir = { version = "0.3", optional = true }
 libc = "0.2"
 
 [target."cfg(windows)".dependencies]
-miow = "0.2"
+miow = "0.3"
 winapi = "0.2"
 
 [features]
