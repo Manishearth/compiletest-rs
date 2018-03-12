@@ -27,7 +27,7 @@ libc = "0.2"
 
 [target."cfg(windows)".dependencies]
 miow = "0.3"
-winapi = "0.2"
+winapi = { version = "0.3", features = ["winerror"] }
 
 [features]
 tmp = ["tempdir"]
