@@ -10,10 +10,14 @@
 
 #![crate_type = "lib"]
 
+#![cfg_attr(not(feature = "norustc"), feature(rustc_private))]
 #![feature(test)]
 #![feature(slice_rotate)]
 
 #![deny(unused_imports)]
+
+#[cfg(not(feature = "norustc"))]
+extern crate rustc;
 
 #[cfg(unix)]
 extern crate libc;
