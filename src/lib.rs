@@ -11,8 +11,8 @@
 #![crate_type = "lib"]
 
 #![cfg_attr(not(feature = "norustc"), feature(rustc_private))]
-#![feature(test)]
-#![feature(slice_rotate)]
+#![cfg_attr(not(feature = "stable"), feature(test))]
+#![cfg_attr(not(feature = "stable"), feature(slice_rotate))]
 
 #![deny(unused_imports)]
 
@@ -21,7 +21,10 @@ extern crate rustc;
 
 #[cfg(unix)]
 extern crate libc;
+#[cfg(not(feature = "stable"))]
 extern crate test;
+#[cfg(feature = "stable")]
+extern crate rustc_test as test;
 
 #[cfg(feature = "tmp")] extern crate tempfile;
 
@@ -272,6 +275,8 @@ pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn
     let config = config.clone();
     let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
+        #[cfg(feature = "stable")]
+        let config = config.clone();  // FIXME: why is this needed?
         runtest::run(config, &testpaths)
     }))
 }
