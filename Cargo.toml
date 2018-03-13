@@ -33,3 +33,4 @@ winapi = { version = "0.3", features = ["winerror"] }
 
 [features]
 tmp = ["tempdir"]
+norustc = []
