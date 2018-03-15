@@ -24,7 +24,6 @@ struct Diagnostic {
     level: String,
     spans: Vec<DiagnosticSpan>,
     children: Vec<Diagnostic>,
-    rendered: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
