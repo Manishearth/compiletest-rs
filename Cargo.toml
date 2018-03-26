@@ -19,7 +19,7 @@ diff = "0.1.10"
 filetime = "0.1"
 getopts = "0.2"
 log = "0.4"
-tempdir = { version = "0.3", optional = true }
+tempfile = { version = "3.0", optional = true }
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
@@ -32,5 +32,5 @@ miow = "0.3"
 winapi = { version = "0.3", features = ["winerror"] }
 
 [features]
-tmp = ["tempdir"]
+tmp = ["tempfile"]
 norustc = []

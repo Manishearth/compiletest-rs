@@ -23,7 +23,7 @@ extern crate rustc;
 extern crate libc;
 extern crate test;
 
-#[cfg(feature = "tmp")] extern crate tempdir;
+#[cfg(feature = "tmp")] extern crate tempfile;
 
 #[macro_use]
 extern crate log;
