@@ -4,6 +4,10 @@ environment:
       CHANNEL: nightly
     - TARGET: x86_64-pc-windows-msvc
       CHANNEL: nightly
+    - TARGET: x86_64-pc-windows-gnu
+      CHANNEL: stable
+    - TARGET: x86_64-pc-windows-msvc
+      CHANNEL: stable
 
 install:
   - curl -sSf -o rustup-init.exe https://win.rustup.rs
@@ -15,8 +19,7 @@ install:
 build: false
 
 test_script:
-  - cargo build
-  - cargo build --features norustc
+  - if %CHANNEL%==stable (cargo build --features stable) else (cargo build)
 
 branches:
   only:
