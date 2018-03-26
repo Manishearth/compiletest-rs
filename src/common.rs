@@ -281,8 +281,8 @@ impl Config {
 
     #[cfg(feature = "tmp")]
     pub fn tempdir(mut self) -> config_tempdir::ConfigWithTemp {
-        use tempdir;
-        let tmp = tempdir::TempDir::new("compiletest")
+        use tempfile;
+        let tmp = tempfile::Builder::new().prefix("compiletest").tempdir()
             .expect("failed to create temporary directory");
         self.build_base = tmp.path().to_owned();
         config_tempdir::ConfigWithTemp {
@@ -294,12 +294,12 @@ impl Config {
 
 #[cfg(feature = "tmp")]
 mod config_tempdir {
-    use tempdir;
+    use tempfile;
     use std::ops;
 
     pub struct ConfigWithTemp {
         pub config: super::Config,
-        pub tempdir: tempdir::TempDir,
+        pub tempdir: tempfile::TempDir,
     }
 
     impl ops::Deref for ConfigWithTemp {
