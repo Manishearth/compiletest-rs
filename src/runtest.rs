@@ -263,6 +263,12 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    #[cfg(feature = "stable")]
+    fn run_pretty_test(&self) {
+        self.fatal("pretty-printing tests can only be used with nightly Rust".into());
+    }
+
+    #[cfg(not(feature = "stable"))]
     fn run_pretty_test(&self) {
         if self.props.pp_exact.is_some() {
             logv(self.config, "testing for exact pretty-printing".to_owned());
