@@ -2616,11 +2616,7 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
                     *skipped += data.len();
                     if data.len() <= TAIL_LEN {
                         tail[..data.len()].copy_from_slice(data);
-                        #[cfg(not(feature = "stable"))]
                         tail.rotate_left(data.len());
-                        // FIXME: Remove this when rotate_left is stable in 1.26
-                        #[cfg(feature = "stable")]
-                        rotate_left(tail, data.len());
                     } else {
                         tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
                     }
@@ -2657,16 +2653,4 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
         stdout: stdout.into_bytes(),
         stderr: stderr.into_bytes(),
     })
-}
-
-// FIXME: Remove this when rotate_left is stable in 1.26
-#[cfg(feature = "stable")]
-fn rotate_left<T>(slice: &mut [T], places: usize) {
-    // Rotation can be implemented by reversing the slice,
-    // splitting the slice in two, and then reversing the
-    // two sub-slices.
-    slice.reverse();
-    let (a, b) = slice.split_at_mut(places);
-    a.reverse();
-    b.reverse();
 }
