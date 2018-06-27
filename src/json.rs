@@ -39,6 +39,14 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
+impl DiagnosticSpan {
+    /// Return the source span - this is either the supplied span, or the span for
+    /// the macro callsite that expanded to it.
+    fn callsite(&self) -> &DiagnosticSpan {
+        self.expansion.as_ref().map(|origin| origin.span.callsite()).unwrap_or(self)
+    }
+}
+
 #[derive(Deserialize, Clone)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code
@@ -47,6 +55,7 @@ struct DiagnosticSpanMacroExpansion {
     /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
     macro_decl_name: String,
 }
+
 
 #[derive(Deserialize, Clone)]
 struct DiagnosticCode {
@@ -89,15 +98,22 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                         diagnostic: &Diagnostic,
                         default_spans: &[&DiagnosticSpan],
                         file_name: &str) {
-    let spans_in_this_file: Vec<_> = diagnostic.spans
+    // In case of macro expansions, we need to get the span of the call site
+    let spans_info_in_this_file: Vec<_> = diagnostic.spans
         .iter()
-        .filter(|span| Path::new(&span.file_name) == Path::new(&file_name))
+        .map(|span| (span.is_primary, span.callsite()))
+        .filter(|(_, span)| Path::new(&span.file_name) == Path::new(&file_name))
         .collect();
 
-    let primary_spans: Vec<_> = spans_in_this_file.iter()
-        .cloned()
-        .filter(|span| span.is_primary)
+    let spans_in_this_file: Vec<_> = spans_info_in_this_file.iter()
+        .map(|(_, span)| span)
+        .collect();
+
+    let primary_spans: Vec<_> = spans_info_in_this_file.iter()
+        .filter(|(is_primary, _)| *is_primary)
+        .map(|(_, span)| span)
         .take(1) // sometimes we have more than one showing up in the json; pick first
+        .cloned()
         .collect();
     let primary_spans = if primary_spans.is_empty() {
         // subdiagnostics often don't have a span of their own;
