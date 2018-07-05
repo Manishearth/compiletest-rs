@@ -12,7 +12,7 @@ To use in your project
 ----------------------
 To use `compiletest-rs` in your application, add the following to `Cargo.toml`
 
-```
+```toml
 [dev-dependencies]
 compiletest_rs = "*"
 ```
