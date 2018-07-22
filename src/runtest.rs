@@ -211,7 +211,7 @@ impl<'test> TestCx<'test> {
 
     fn check_correct_failure_status(&self, proc_res: &ProcRes) {
         // The value the rust runtime returns on failure
-        const RUST_ERR: i32 = 101;
+        const RUST_ERR: i32 = 1;
         if proc_res.status.code() != Some(RUST_ERR) {
             self.fatal_proc_rec(
                 &format!("failure produced the wrong error: {}",
