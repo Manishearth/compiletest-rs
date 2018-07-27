@@ -20,8 +20,8 @@ build: false
 
 test_script:
   - if %CHANNEL%==stable (cargo build --features stable) else (cargo build)
+  - cd test-project && if %CHANNEL%==stable (cargo test --features stable) else (cargo test)
 
 branches:
   only:
     - master
-
