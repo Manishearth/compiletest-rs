@@ -27,6 +27,7 @@ extern crate test;
 
 #[macro_use]
 extern crate log;
+extern crate regex;
 extern crate filetime;
 extern crate diff;
 extern crate serde_json;
