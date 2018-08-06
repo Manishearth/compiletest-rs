@@ -16,6 +16,7 @@ use diff;
 use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
+use regex::Regex;
 use header::TestProps;
 use util::logv;
 
@@ -2454,7 +2455,8 @@ actual:\n\
               .replace("\r\n", "\n") // normalize for linebreaks on windows
               .replace("\t", "\\t"); // makes tabs visible
         for rule in custom_rules {
-            normalized = normalized.replace(&rule.0, &rule.1);
+            let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
+            normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();
         }
         normalized
     }
