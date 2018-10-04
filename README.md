@@ -79,7 +79,7 @@ Example
 -------
 See the `test-project` folder for a complete working example using the
 `compiletest-rs` utility. Simply `cd test-project` and `cargo test` to see the
-tests run. The annotation syntax is documented in [rust's test-suite][tests].
+tests run. The annotation syntax is documented in the [rustc-guide][tests].
 
 TODO
 ----
@@ -103,4 +103,4 @@ If you are unsure, open a pull request anyway and we would be glad to help!
 
 [upstream]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 [src]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src
-[tests]: https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md
+[tests]: https://rust-lang-nursery.github.io/rustc-guide/tests/adding.html#header-commands-configuring-rustc
