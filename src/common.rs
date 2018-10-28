@@ -17,7 +17,7 @@ use std::path::PathBuf;
 #[cfg(not(feature = "norustc"))]
 use rustc;
 
-use test::ColorConfig;
+use test::{ColorConfig, RunIgnored};
 use runtest::dylib_env_var;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -143,7 +143,7 @@ pub struct Config {
     pub mode: Mode,
 
     /// Run ignored tests
-    pub run_ignored: bool,
+    pub run_ignored: RunIgnored,
 
     /// Only run tests that match this filter
     pub filter: Option<String>,
@@ -337,7 +337,7 @@ impl Default for Config {
             build_base: env::temp_dir(),
             stage_id: "stage-id".to_owned(),
             mode: Mode::RunPass,
-            run_ignored: false,
+            run_ignored: RunIgnored::No,
             filter: None,
             filter_exact: false,
             logfile: None,
