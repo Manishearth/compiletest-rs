@@ -12,7 +12,6 @@
 
 #![cfg_attr(not(feature = "norustc"), feature(rustc_private))]
 #![cfg_attr(not(feature = "stable"), feature(test))]
-#![cfg_attr(not(feature = "stable"), feature(slice_rotate))]
 
 #![deny(unused_imports)]
 
