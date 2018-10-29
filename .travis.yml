@@ -4,7 +4,7 @@ matrix:
    - rust: nightly
      env: FEATURES=""
    - rust: beta
-     env: FEATURES=""
+     env: FEATURES="--features stable"
    - rust: stable
      env: FEATURES="--features stable"
    - rust: nightly
