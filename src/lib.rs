@@ -94,16 +94,10 @@ pub fn run_tests(config: &Config) {
 }
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
-    #[cfg(feature = "stable")]
-    let run_ignored = config.run_ignored;
-
-    #[cfg(not(feature = "stable"))]
-    let run_ignored = if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No };
-
     test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
-        run_ignored: run_ignored,
+        run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
         logfile: config.logfile.clone(),
         run_tests: true,
