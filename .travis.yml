@@ -1,6 +1,16 @@
 language: rust
-rust: nightly
-script: cd test-project && cargo test
+rust:
+ - stable
+ - nightly
+matrix:
+ include:
+   - rust: stable
+     env: FEATURES="--features stable"
+   - rust: nightly
+     env: FEATURES=""
+
+install: cargo build --verbose $FEATURES
+script: cd test-project && cargo test $FEATURES
 
 notifications:
   email:
