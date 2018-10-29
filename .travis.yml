@@ -1,15 +1,15 @@
 language: rust
-rust:
- - stable
- - nightly
 matrix:
  include:
+   - rust: nightly
+     env: FEATURES=""
+   - rust: beta
+     env: FEATURES=""
    - rust: stable
      env: FEATURES="--features stable"
    - rust: nightly
-     env: FEATURES=""
+     env: FEATURES="--features stable"
 
-install: cargo build --verbose $FEATURES
 script: cd test-project && cargo test $FEATURES
 
 notifications:
