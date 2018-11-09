@@ -280,7 +280,7 @@ impl Config {
     }
 
     #[cfg(feature = "tmp")]
-    pub fn tempdir(mut self) -> config_tempdir::ConfigWithTemp {
+    pub fn tempdir(mut self) -> ConfigWithTemp {
         use tempfile;
         let tmp = tempfile::Builder::new().prefix("compiletest").tempdir()
             .expect("failed to create temporary directory");
@@ -316,6 +316,9 @@ mod config_tempdir {
         }
     }
 }
+
+#[cfg(feature = "tmp")]
+pub use self::config_tempdir::ConfigWithTemp;
 
 
 impl Default for Config {
