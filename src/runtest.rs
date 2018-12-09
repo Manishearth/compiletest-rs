@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use common::{Config, TestPaths};
+use common::{UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
@@ -17,6 +18,7 @@ use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
 use regex::Regex;
+use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use header::TestProps;
 use util::logv;
 
@@ -1430,7 +1432,16 @@ actual:\n\
 
                 rustc.arg(dir_opt);
             }
-            RunPass |
+            RunPass | Ui => {
+                if !self
+                    .props
+                    .compile_flags
+                    .iter()
+                    .any(|s| s.starts_with("--error-format"))
+                {
+                    rustc.args(&["--error-format", "json"]);
+                }
+            }
             RunFail |
             RunPassValgrind |
             Pretty |
@@ -1439,7 +1450,6 @@ actual:\n\
             Codegen |
             Rustdoc |
             RunMake |
-            Ui |
             CodegenUnits => {
                 // do not use JSON output
             }
@@ -2222,22 +2232,68 @@ actual:\n\
     }
 
     fn run_ui_test(&self) {
+        // if the user specified a format in the ui test
+        // print the output to the stderr file, otherwise extract
+        // the rendered error messages from json and print them
+        let explicit = self
+            .props
+            .compile_flags
+            .iter()
+            .any(|s| s.contains("--error-format"));
         let proc_res = self.compile_test();
 
-        let expected_stderr_path = self.expected_output_path("stderr");
+        let expected_stderr_path = self.expected_output_path(UI_STDERR);
         let expected_stderr = self.load_expected_output(&expected_stderr_path);
 
-        let expected_stdout_path = self.expected_output_path("stdout");
+        let expected_stdout_path = self.expected_output_path(UI_STDOUT);
         let expected_stdout = self.load_expected_output(&expected_stdout_path);
+
+        let expected_fixed_path = self.expected_output_path(UI_FIXED);
+        let expected_fixed = self.load_expected_output(&expected_fixed_path);
 
         let normalized_stdout =
             self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
+
+        let stderr = if explicit {
+            proc_res.stderr.clone()
+        } else {
+            json::extract_rendered(&proc_res.stderr, &proc_res)
+        };
+
         let normalized_stderr =
-            self.normalize_output(&proc_res.stderr, &self.props.normalize_stderr);
+            self.normalize_output(&stderr, &self.props.normalize_stderr);
 
         let mut errors = 0;
-        errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        errors += self.compare_output(UI_STDOUT, &normalized_stdout, &expected_stdout);
+        errors += self.compare_output(UI_STDERR, &normalized_stderr, &expected_stderr);
+
+
+        if self.props.run_rustfix {
+            // Apply suggestions from lints to the code itself
+            let unfixed_code = self
+                .load_expected_output_from_path(&self.testpaths.file)
+                .expect("Could not load output from path");
+            let suggestions = get_suggestions_from_json(
+                &proc_res.stderr,
+                &HashSet::new(),
+                if self.props.rustfix_only_machine_applicable {
+                    Filter::MachineApplicableOnly
+                } else {
+                    Filter::Everything
+                },
+            ).expect("Could not retrieve suggestions from JSON");
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(&format!(
+                "failed to apply suggestions for {:?} with rustfix",
+                self.testpaths.file
+            ));
+
+            errors += self.compare_output(UI_FIXED, &fixed_code, &expected_fixed);
+        } else if !expected_fixed.is_empty() {
+            panic!(
+                "the `// run-rustfix` directive wasn't found but a `*.fixed` \
+                 file was found"
+            );
+        }
 
         if errors > 0 {
             println!("To update references, run this command from build directory:");
@@ -2257,6 +2313,23 @@ actual:\n\
 
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
+            }
+        }
+
+        if self.props.run_rustfix {
+            // And finally, compile the fixed code and make sure it both
+            // succeeds and has no diagnostics.
+            let mut rustc = self.make_compile_args(
+                &self.testpaths.file.with_extension(UI_FIXED),
+                TargetLocation::ThisFile(self.make_exe_name()),
+            );
+            rustc.arg("-L").arg(&self.aux_output_dir_name());
+            let res = self.compose_and_run_compiler(rustc, None);
+            if !res.status.success() {
+                self.fatal_proc_rec("failed to compile fixed code", &res);
+            }
+            if !res.stderr.is_empty() && !self.props.rustfix_only_machine_applicable {
+                self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
             }
         }
     }
@@ -2485,6 +2558,12 @@ actual:\n\
                                     path.display(), e))
             }
         }
+    }
+
+    fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
+        fs::read_to_string(path).map_err(|err| {
+            format!("failed to load expected output from `{}`: {}", path.display(), err)
+        })
     }
 
     fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
