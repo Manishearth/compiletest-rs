@@ -10,7 +10,9 @@ matrix:
     - rust: nightly
       env: FEATURES="--features stable"
 
-script: cd test-project && cargo test $FEATURES
+script:
+  - cargo test $FEATURES
+  - cd test-project && cargo test $FEATURES
 
 notifications:
   email:
