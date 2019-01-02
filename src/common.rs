@@ -234,6 +234,10 @@ pub struct TestPaths {
     pub relative_dir: PathBuf, // e.g., foo/bar
 }
 
+pub const UI_STDERR: &str = "stderr";
+pub const UI_STDOUT: &str = "stdout";
+pub const UI_FIXED: &str = "fixed";
+
 impl Config {
     /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
     pub fn link_deps(&mut self) {

@@ -222,6 +222,8 @@ pub struct TestProps {
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
+    pub run_rustfix: bool,
+    pub rustfix_only_machine_applicable: bool,
 }
 
 impl TestProps {
@@ -250,6 +252,8 @@ impl TestProps {
             run_pass: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
+            run_rustfix: false,
+            rustfix_only_machine_applicable: false,
         }
     }
 
@@ -370,6 +374,15 @@ impl TestProps {
             }
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
                 self.normalize_stderr.push(rule);
+            }
+
+            if !self.run_rustfix {
+                self.run_rustfix = config.parse_run_rustfix(ln);
+            }
+
+            if !self.rustfix_only_machine_applicable {
+                self.rustfix_only_machine_applicable =
+                    config.parse_rustfix_only_machine_applicable(ln);
             }
         });
 
@@ -587,6 +600,14 @@ impl Config {
         }
 
         None
+    }
+
+    fn parse_run_rustfix(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "run-rustfix")
+    }
+
+    fn parse_rustfix_only_machine_applicable(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "rustfix-only-machine-applicable")
     }
 }
 
