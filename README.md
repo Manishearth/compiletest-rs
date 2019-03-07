@@ -17,6 +17,14 @@ To use `compiletest-rs` in your application, add the following to `Cargo.toml`
 compiletest_rs = "*"
 ```
 
+This will require you to use rust nightly.  If you want to use rust stable
+set the feature `stable`:
+
+```toml
+[dev-dependencies]
+compiletest_rs = { version = "*", features = [ "stable" ] }
+```
+
 Create a `tests` folder in the root folder of your project. Create a test file
 with something like the following:
 
