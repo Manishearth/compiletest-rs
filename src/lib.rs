@@ -20,7 +20,7 @@ extern crate rustc;
 
 #[cfg(unix)]
 extern crate libc;
-extern crate test;
+extern crate libtest as test;
 
 #[cfg(feature = "tmp")] extern crate tempfile;
 
