@@ -2,7 +2,7 @@ language: rust
 matrix:
  include:
    - rust: nightly
-     env: FEATURES=""
+     env: FEATURES="--features unstable"
    - rust: beta
      env: FEATURES="--features stable"
    - rust: stable
