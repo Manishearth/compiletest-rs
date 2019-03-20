@@ -21,6 +21,6 @@ fn compile_test() {
     run_mode("run-pass");
     run_mode("ui");
 
-    #[cfg(not(feature = "stable"))]
+    #[cfg(feature = "unstable")]
     run_mode("pretty");
 }

@@ -15,8 +15,8 @@ install:
 build: false
 
 test_script:
-  - if %CHANNEL%==stable (cargo build --features stable) else (cargo build)
-  - cd test-project && if %CHANNEL%==stable (cargo test --features stable) else (cargo test)
+  - if %CHANNEL%==stable (cargo build) else (cargo build --features=unstable)
+  - cd test-project && if %CHANNEL%==stable (cargo test) else (cargo test --features=unstable)
 
 branches:
   only:

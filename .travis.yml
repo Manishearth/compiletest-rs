@@ -2,13 +2,10 @@ language: rust
 matrix:
  include:
    - rust: nightly
-     env: FEATURES=""
+     env: FEATURES="--features unstable"
    - rust: beta
-     env: FEATURES="--features stable"
    - rust: stable
-     env: FEATURES="--features stable"
    - rust: nightly
-     env: FEATURES="--features stable"
 
 script: cd test-project && cargo test $FEATURES
 
