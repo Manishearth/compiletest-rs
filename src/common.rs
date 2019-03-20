@@ -14,10 +14,10 @@ use std::fmt;
 use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
-#[cfg(not(feature = "norustc"))]
+#[cfg(feature = "unstable")]
 use rustc;
 
-use test::ColorConfig;
+use libtest::ColorChoice;
 use runtest::dylib_env_var;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -210,7 +210,7 @@ pub struct Config {
     pub quiet: bool,
 
     /// Whether to use colors in test.
-    pub color: ColorConfig,
+    pub color: ColorChoice,
 
     /// where to find the remote test client process, if we're using it
     pub remote_test_client: Option<PathBuf>,
@@ -327,8 +327,15 @@ pub use self::config_tempdir::ConfigWithTemp;
 
 impl Default for Config {
     fn default() -> Config {
-        #[cfg(not(feature = "norustc"))]
-        let platform = rustc::session::config::host_triple().to_string();
+        #[cfg(feature = "unstable")]
+        let (target, host) = {
+            let platform = rustc::session::config::host_triple().to_string();
+            (platform.clone(), platform.clone())
+        };
+        #[cfg(not(feature = "unstable"))]
+        let (target, host) =  {
+            (env!("TARGET").to_string(), env!("HOST").to_string())
+        };
 
         Config {
             compile_lib_path: PathBuf::from(""),
@@ -351,14 +358,8 @@ impl Default for Config {
             runtool: None,
             host_rustcflags: None,
             target_rustcflags: None,
-            #[cfg(not(feature = "norustc"))]
-            target: platform.clone(),
-            #[cfg(feature = "norustc")]
-            target: env!("TARGET").to_string(),
-            #[cfg(not(feature = "norustc"))]
-            host: platform.clone(),
-            #[cfg(feature = "norustc")]
-            host: env!("HOST").to_string(),
+            target,
+            host,
             gdb: None,
             gdb_version: None,
             gdb_native_rust: false,
@@ -372,7 +373,7 @@ impl Default for Config {
             lldb_python_dir: None,
             verbose: false,
             quiet: false,
-            color: ColorConfig::AutoColor,
+            color: ColorChoice::Auto,
             remote_test_client: None,
             cc: "cc".to_string(),
             cxx: "cxx".to_string(),
