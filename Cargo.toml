@@ -1,6 +1,6 @@
 [package]
 name = "compiletest_rs"
-version = "0.3.20"
+version = "0.3.19"
 authors = [ "The Rust Project Developers"
           , "Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>"
           , "Manish Goregaokar <manishsmail@gmail.com>"
@@ -26,7 +26,6 @@ serde_json = "1.0"
 serde_derive = "1.0"
 rustfix = "0.4.1"
 tester = { version = "0.5", optional = true }
-libtest = "0.0.1"
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"
