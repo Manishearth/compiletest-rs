@@ -88,7 +88,8 @@ pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
                     }
                 }
             } else {
-                None
+                // preserve non-JSON lines, such as ICEs
+                Some(format!("{}\n", line))
             }
         })
         .collect()
