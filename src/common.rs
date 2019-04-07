@@ -285,7 +285,6 @@ impl Config {
 
     #[cfg(feature = "tmp")]
     pub fn tempdir(mut self) -> ConfigWithTemp {
-        use tempfile;
         let tmp = tempfile::Builder::new().prefix("compiletest").tempdir()
             .expect("failed to create temporary directory");
         self.build_base = tmp.path().to_owned();
