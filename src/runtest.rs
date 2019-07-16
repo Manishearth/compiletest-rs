@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
-use std::fs::{self, File, create_dir_all};
+use std::fs::{self, File, create_dir_all, OpenOptions};
 use std::fmt;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -2267,6 +2267,36 @@ actual:\n\
         errors += self.compare_output(UI_STDOUT, &normalized_stdout, &expected_stdout);
         errors += self.compare_output(UI_STDERR, &normalized_stderr, &expected_stderr);
 
+
+        if self.config.rustfix_coverage {
+            // Find out which tests have `MachineApplicable` suggestions but are missing
+            // `run-rustfix` or `run-rustfix-only-machine-applicable` headers.
+            //
+            // This will return an empty `Vec` in case the executed test file has a
+            // `compile-flags: --error-format=xxxx` header with a value other than `json`.
+            let suggestions = get_suggestions_from_json(
+                &proc_res.stderr,
+                &HashSet::new(),
+                Filter::MachineApplicableOnly
+            ).unwrap_or_default();
+            if suggestions.len() > 0
+                && !self.props.run_rustfix
+                && !self.props.rustfix_only_machine_applicable {
+                    let mut coverage_file_path = self.config.build_base.clone();
+                    coverage_file_path.push("rustfix_missing_coverage.txt");
+                    debug!("coverage_file_path: {}", coverage_file_path.display());
+
+                    let mut file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(coverage_file_path.as_path())
+                        .expect("could not create or open file");
+
+                    if let Err(_) = writeln!(file, "{}", self.testpaths.file.display()) {
+                        panic!("couldn't write to {}", coverage_file_path.display());
+                    }
+            }
+        }
 
         if self.props.run_rustfix {
             // Apply suggestions from lints to the code itself

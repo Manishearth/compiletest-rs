@@ -215,6 +215,11 @@ pub struct Config {
     /// where to find the remote test client process, if we're using it
     pub remote_test_client: Option<PathBuf>,
 
+    /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
+    /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
+    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    pub rustfix_coverage: bool,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -358,6 +363,7 @@ impl Default for Config {
             host: platform.clone(),
             #[cfg(feature = "norustc")]
             host: env!("HOST").to_string(),
+            rustfix_coverage: false,
             gdb: None,
             gdb_version: None,
             gdb_native_rust: false,
