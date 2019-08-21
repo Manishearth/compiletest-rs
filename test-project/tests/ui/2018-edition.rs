@@ -6,3 +6,5 @@ impl Foo {
     pub async fn foo(&mut self) {
     }
 }
+
+fn main() {}
