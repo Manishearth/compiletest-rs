@@ -13,14 +13,14 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-fn a(_x: Box<Foo+Send>) {
+fn a(_x: Box<dyn Foo+Send>) {
 }
 
-fn c(x: Box<Foo+Sync+Send>) {
+fn c(x: Box<dyn Foo+Sync+Send>) {
     a(x);
 }
 
-fn d(x: Box<Foo>) {
+fn d(x: Box<dyn Foo>) {
     a(x); //~  ERROR mismatched types
           //~| expected trait `Foo + std::marker::Send`, found trait `Foo`
           //~| expected type `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`
