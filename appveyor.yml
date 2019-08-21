@@ -8,7 +8,8 @@ environment:
 install:
   - curl -sSf -o rustup-init.exe https://win.rustup.rs
   - rustup-init.exe --default-host %TARGET% --default-toolchain %CHANNEL% -y
-  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\bin
+  - gcc --version
   - rustc -Vv
   - cargo -V
 
