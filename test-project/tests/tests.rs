@@ -2,13 +2,14 @@ extern crate compiletest_rs as compiletest;
 
 use std::path::PathBuf;
 
-fn run_mode(mode: &'static str) {
-
+fn run_mode(mode: &'static str, custom_dir: Option<&'static str>) {
     let mut config = compiletest::Config::default().tempdir();
     let cfg_mode = mode.parse().expect("Invalid mode");
 
     config.mode = cfg_mode;
-    config.src_base = PathBuf::from(format!("tests/{}", mode));
+
+    let dir = custom_dir.unwrap_or(mode);
+    config.src_base = PathBuf::from(format!("tests/{}", dir));
     config.target_rustcflags = Some("-L target/debug -L target/debug/deps".to_string());
     config.clean_rmeta();
 
@@ -17,10 +18,12 @@ fn run_mode(mode: &'static str) {
 
 #[test]
 fn compile_test() {
-    run_mode("compile-fail");
-    run_mode("run-pass");
-    run_mode("ui");
+    run_mode("compile-fail", None);
+    run_mode("run-pass", None);
+    run_mode("ui", None);
 
     #[cfg(not(feature = "stable"))]
-    run_mode("pretty");
+    run_mode("pretty", None);
+    #[cfg(not(feature = "stable"))]
+    run_mode("ui", Some("nightly"));
 }
