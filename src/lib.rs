@@ -126,6 +126,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         skip: vec![],
         list: false,
         options: test::Options::new(),
+        #[cfg(not(feature = "stable"))]
         report_time: false,
     }
 }
