@@ -127,7 +127,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         list: false,
         options: test::Options::new(),
         #[cfg(not(feature = "stable"))]
-        report_time: false,
+        time_options: None,
     }
 }
 
