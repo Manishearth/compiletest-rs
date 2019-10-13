@@ -259,6 +259,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: early_props.ignore,
             should_panic: should_panic,
             allow_fail: false,
+            test_type: test::TestType::IntegrationTest,
         },
         testfn: make_test_closure(config, testpaths),
     }
