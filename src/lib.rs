@@ -126,6 +126,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         skip: vec![],
         list: false,
         options: test::Options::new(),
+        #[cfg(not(feature = "stable"))]
         time_options: None,
     }
 }
@@ -151,8 +152,8 @@ fn collect_tests_from_dir(config: &Config,
                           -> io::Result<()> {
     // Ignore directories that contain a file
     // `compiletest-ignore-dir`.
-    for file in try!(fs::read_dir(dir)) {
-        let file = try!(file);
+    for file in fs::read_dir(dir)? {
+        let file = file?;
         let name = file.file_name();
         if name == *"compiletest-ignore-dir" {
             return Ok(());
@@ -179,9 +180,9 @@ fn collect_tests_from_dir(config: &Config,
 
     // Add each `.rs` file as a test, and recurse further on any
     // subdirectories we find, except for `aux` directories.
-    let dirs = try!(fs::read_dir(dir));
+    let dirs = fs::read_dir(dir)?;
     for file in dirs {
-        let file = try!(file);
+        let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
         if is_test(&file_name) {
@@ -212,11 +213,11 @@ fn collect_tests_from_dir(config: &Config,
                 fs::create_dir_all(&build_dir).unwrap();
             } else {
                 debug!("found directory: {:?}", file_path.display());
-                try!(collect_tests_from_dir(config,
+                collect_tests_from_dir(config,
                                        base,
                                        &file_path,
                                        &relative_file_path,
-                                       tests));
+                                       tests)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
