@@ -42,7 +42,7 @@ mod imp {
 
     pub fn read2(mut out_pipe: ChildStdout,
                  mut err_pipe: ChildStderr,
-                 data: &mut FnMut(bool, &mut Vec<u8>, bool)) -> io::Result<()> {
+                 data: &mut dyn FnMut(bool, &mut Vec<u8>, bool)) -> io::Result<()> {
         unsafe {
             libc::fcntl(out_pipe.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK);
             libc::fcntl(err_pipe.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK);
