@@ -259,6 +259,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: early_props.ignore,
             should_panic: should_panic,
             allow_fail: false,
+            #[cfg(not(feature = "stable"))]
+            test_type: test::TestType::Unknown,
         },
         testfn: make_test_closure(config, testpaths),
     }
