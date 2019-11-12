@@ -3,6 +3,8 @@ matrix:
  include:
    - rust: nightly
      env: FEATURES=""
+     before_script:
+       rustup component add rustc-dev
    - rust: beta
      env: FEATURES="--features stable"
    - rust: stable
