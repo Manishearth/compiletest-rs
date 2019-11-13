@@ -10,4 +10,4 @@ path = ".."
 features = ["tmp"]
 
 [features]
-stable = ["compiletest_rs/stable"]
+rustc = ["compiletest_rs/rustc"]

@@ -2,15 +2,15 @@ language: rust
 matrix:
  include:
    - rust: nightly
-     env: FEATURES=""
+     env: FEATURES="--features rustc"
      before_script:
        rustup component add rustc-dev
    - rust: beta
-     env: FEATURES="--features stable"
+     env: FEATURES=""
    - rust: stable
-     env: FEATURES="--features stable"
+     env: FEATURES=""
    - rust: nightly
-     env: FEATURES="--features stable"
+     env: FEATURES=""
 
 script: cd test-project && cargo test $FEATURES
 
