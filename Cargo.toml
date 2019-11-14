@@ -37,3 +37,4 @@ winapi = { version = "0.3", features = ["winerror"] }
 [features]
 tmp = ["tempfile"]
 rustc = []
+stable = [] # Does nothing. Should be removed at next major release
