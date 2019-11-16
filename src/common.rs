@@ -14,7 +14,7 @@ use std::fmt;
 use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
-#[cfg(not(feature = "norustc"))]
+#[cfg(feature = "rustc")]
 use rustc;
 
 use test::ColorConfig;
@@ -331,7 +331,7 @@ pub use self::config_tempdir::ConfigWithTemp;
 
 impl Default for Config {
     fn default() -> Config {
-        #[cfg(not(feature = "norustc"))]
+        #[cfg(feature = "rustc")]
         let platform = rustc::session::config::host_triple().to_string();
 
         Config {
@@ -355,13 +355,13 @@ impl Default for Config {
             runtool: None,
             host_rustcflags: None,
             target_rustcflags: None,
-            #[cfg(not(feature = "norustc"))]
+            #[cfg(feature = "rustc")]
             target: platform.clone(),
-            #[cfg(feature = "norustc")]
+            #[cfg(not(feature = "rustc"))]
             target: env!("TARGET").to_string(),
-            #[cfg(not(feature = "norustc"))]
+            #[cfg(feature = "rustc")]
             host: platform.clone(),
-            #[cfg(feature = "norustc")]
+            #[cfg(not(feature = "rustc"))]
             host: env!("HOST").to_string(),
             rustfix_coverage: false,
             gdb: None,

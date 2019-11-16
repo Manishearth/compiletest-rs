@@ -22,8 +22,8 @@ fn compile_test() {
     run_mode("run-pass", None);
     run_mode("ui", None);
 
-    #[cfg(not(feature = "stable"))]
+    #[cfg(feature = "rustc")]
     run_mode("pretty", None);
-    #[cfg(not(feature = "stable"))]
+    #[cfg(feature = "rustc")]
     run_mode("ui", Some("nightly"));
 }

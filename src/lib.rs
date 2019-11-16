@@ -10,12 +10,11 @@
 
 #![crate_type = "lib"]
 
-#![cfg_attr(not(feature = "norustc"), feature(rustc_private))]
-#![cfg_attr(not(feature = "stable"), feature(test))]
+#![cfg_attr(feature = "rustc", feature(rustc_private))]
 
 #![deny(unused_imports)]
 
-#[cfg(not(feature = "norustc"))]
+#[cfg(feature = "rustc")]
 extern crate rustc;
 
 #[cfg(unix)]
@@ -110,8 +109,6 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
-        #[cfg(not(feature = "stable"))]
-        exclude_should_panic: false,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
         logfile: config.logfile.clone(),
@@ -126,8 +123,6 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         skip: vec![],
         list: false,
         options: test::Options::new(),
-        #[cfg(not(feature = "stable"))]
-        time_options: None,
     }
 }
 
@@ -259,8 +254,6 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: early_props.ignore,
             should_panic: should_panic,
             allow_fail: false,
-            #[cfg(not(feature = "stable"))]
-            test_type: test::TestType::IntegrationTest,
         },
         testfn: make_test_closure(config, testpaths),
     }
@@ -291,7 +284,6 @@ pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn
     let config = config.clone();
     let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
-        #[cfg(feature = "stable")]
         let config = config.clone();  // FIXME: why is this needed?
         runtest::run(config, &testpaths)
     }))
