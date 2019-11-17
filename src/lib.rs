@@ -11,15 +11,21 @@
 #![crate_type = "lib"]
 
 #![cfg_attr(feature = "rustc", feature(rustc_private))]
+#![cfg_attr(feature = "rustc", feature(test))]
 
 #![deny(unused_imports)]
 
 #[cfg(feature = "rustc")]
 extern crate rustc;
 
+#[cfg(feature = "rustc")]
+extern crate test;
+
+#[cfg(not(feature = "rustc"))]
+extern crate tester as test;
+
 #[cfg(unix)]
 extern crate libc;
-extern crate test;
 
 #[cfg(feature = "tmp")] extern crate tempfile;
 
@@ -109,6 +115,10 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
+        #[cfg(feature = "rustc")]
+        force_run_in_process: false,
+        #[cfg(feature = "rustc")]
+        exclude_should_panic: false,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
         logfile: config.logfile.clone(),
@@ -123,6 +133,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         skip: vec![],
         list: false,
         options: test::Options::new(),
+        #[cfg(feature = "rustc")]
+        time_options: None,
     }
 }
 
@@ -254,6 +266,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: early_props.ignore,
             should_panic: should_panic,
             allow_fail: false,
+            #[cfg(feature = "rustc")]
+            test_type: test::TestType::IntegrationTest,
         },
         testfn: make_test_closure(config, testpaths),
     }
