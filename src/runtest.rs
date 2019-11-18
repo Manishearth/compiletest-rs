@@ -266,12 +266,6 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    #[cfg(feature = "stable")]
-    fn run_pretty_test(&self) {
-        self.fatal("pretty-printing tests can only be used with nightly Rust".into());
-    }
-
-    #[cfg(not(feature = "stable"))]
     fn run_pretty_test(&self) {
         if self.props.pp_exact.is_some() {
             logv(self.config, "testing for exact pretty-printing".to_owned());
@@ -348,7 +342,6 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    #[cfg(not(feature = "stable"))]
     fn print_source(&self, src: String, pretty_type: &str) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
@@ -367,7 +360,6 @@ impl<'test> TestCx<'test> {
                              Some(src))
     }
 
-    #[cfg(not(feature = "stable"))]
     fn compare_source(&self,
                       expected: &str,
                       actual: &str) {
@@ -388,7 +380,6 @@ actual:\n\
         }
     }
 
-    #[cfg(not(feature = "stable"))]
     fn typecheck_source(&self, src: String) -> ProcRes {
         let mut rustc = Command::new(&self.config.rustc_path);
 
