@@ -19,17 +19,7 @@ compiletest_rs = "*"
 
 By default, `compiletest-rs` should be able to run on both stable, beta and
 nightly channels of rust. We use the [`tester`](tester) fork of Rust's builtin
-`test` crate, so that we don't have require nightly. If you are running nightly
-and want to use Rust's `test` crate directly, you to have the rustc development
-libraries install (which you can get by running `rustup component add rustc-dev
---target nightly`). Once you have the rustc development libraries installed, you
-can use the `rustc` feature to make compiletest use them instead of the `tester`
-crate.
-
-```toml
-[dev-dependencies]
-compiletest_rs = { version = "*", features = [ "rustc" ] }
-```
+`test` crate, so that we don't have require nightly. 
 
 Create a `tests` folder in the root folder of your project. Create a test file
 with something like the following:
