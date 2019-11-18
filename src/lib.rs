@@ -109,6 +109,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
+        exclude_should_panic: false,
+        force_run_in_process: false,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
         logfile: config.logfile.clone(),
@@ -123,6 +125,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         skip: vec![],
         list: false,
         options: test::Options::new(),
+        time_options: None,
     }
 }
 
@@ -254,6 +257,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: early_props.ignore,
             should_panic: should_panic,
             allow_fail: false,
+            test_type: test::TestType::IntegrationTest,
         },
         testfn: make_test_closure(config, testpaths),
     }
