@@ -11,6 +11,7 @@
 #![crate_type = "lib"]
 
 #![cfg_attr(feature = "rustc", feature(rustc_private))]
+#![cfg_attr(feature = "rustc", feature(test))]
 
 #![deny(unused_imports)]
 
@@ -19,7 +20,10 @@ extern crate rustc;
 
 #[cfg(unix)]
 extern crate libc;
+#[cfg(feature = "rustc")]
 extern crate test;
+#[cfg(not(feature = "rustc"))]
+extern crate tester as test;
 
 #[cfg(feature = "tmp")] extern crate tempfile;
 
