@@ -1,33 +1,39 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+use std::ffi::OsStr;
 use std::env;
-use common::Config;
+use std::path::PathBuf;
+use crate::common::Config;
+
+use log::*;
+
+#[cfg(test)]
+mod tests;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
-    ("bitrig", "bitrig"),
+    ("androideabi", "android"),
+    ("cloudabi", "cloudabi"),
+    ("cuda", "cuda"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
+    ("emscripten", "emscripten"),
     ("freebsd", "freebsd"),
+    ("fuchsia", "fuchsia"),
     ("haiku", "haiku"),
+    ("hermit", "hermit"),
     ("ios", "ios"),
+    ("l4re", "l4re"),
     ("linux", "linux"),
     ("mingw32", "windows"),
+    ("none", "none"),
     ("netbsd", "netbsd"),
     ("openbsd", "openbsd"),
+    ("redox", "redox"),
+    ("sgx", "sgx"),
+    ("solaris", "solaris"),
     ("win32", "windows"),
     ("windows", "windows"),
-    ("solaris", "solaris"),
-    ("emscripten", "emscripten"),
+    ("vxworks", "vxworks"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -35,46 +41,76 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("amd64", "x86_64"),
     ("arm", "arm"),
     ("arm64", "aarch64"),
+    ("armv4t", "arm"),
+    ("armv5te", "arm"),
+    ("armv7", "arm"),
+    ("armv7s", "arm"),
+    ("asmjs", "asmjs"),
     ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i586", "x86"),
     ("i686", "x86"),
     ("mips", "mips"),
+    ("mips64", "mips64"),
+    ("mips64el", "mips64"),
+    ("mipsisa32r6", "mips"),
+    ("mipsisa32r6el", "mips"),
+    ("mipsisa64r6", "mips64"),
+    ("mipsisa64r6el", "mips64"),
+    ("mipsel", "mips"),
+    ("mipsisa32r6", "mips"),
+    ("mipsisa32r6el", "mips"),
+    ("mipsisa64r6", "mips64"),
+    ("mipsisa64r6el", "mips64"),
     ("msp430", "msp430"),
+    ("nvptx64", "nvptx64"),
     ("powerpc", "powerpc"),
     ("powerpc64", "powerpc64"),
+    ("powerpc64le", "powerpc64"),
     ("s390x", "s390x"),
     ("sparc", "sparc"),
+    ("sparc64", "sparc64"),
+    ("sparcv9", "sparc64"),
+    ("thumbv6m", "thumb"),
+    ("thumbv7em", "thumb"),
+    ("thumbv7m", "thumb"),
+    ("wasm32", "wasm32"),
     ("x86_64", "x86_64"),
     ("xcore", "xcore"),
-    ("asmjs", "asmjs"),
-    ("wasm32", "wasm32"),
 ];
 
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target
     if triple == "wasm32-unknown-unknown" {
-        return name == "emscripten" || name == "wasm32-bare"
+        return name == "emscripten" || name == "wasm32-bare";
     }
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_os, os) in OS_TABLE {
-        if triple.contains(triple_os) {
+        if triple.contains(&triple_os) {
             return os == name;
         }
     }
     panic!("Cannot determine OS from triple");
 }
+
+/// Determine the architecture from `triple`
 pub fn get_arch(triple: &str) -> &'static str {
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_arch, arch) in ARCH_TABLE {
-        if triple.contains(triple_arch) {
+        if triple.contains(&triple_arch) {
             return arch;
         }
     }
     panic!("Cannot determine Architecture from triple");
 }
 
-pub fn get_env(triple: &str) -> Option<&str> {
-    triple.split('-').nth(3)
+pub fn matches_env(triple: &str, name: &str) -> bool {
+    if let Some(env) = triple.split('-').nth(3) {
+        env.starts_with(name)
+    } else {
+        false
+    }
 }
 
 pub fn get_pointer_width(triple: &str) -> &'static str {
@@ -107,4 +143,32 @@ pub fn logv(config: &Config, s: String) {
     if config.verbose {
         println!("{}", s);
     }
+}
+
+pub trait PathBufExt {
+    /// Append an extension to the path, even if it already has one.
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf;
+}
+
+impl PathBufExt for PathBuf {
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        if extension.as_ref().len() == 0 {
+            self.clone()
+        } else {
+            let mut fname = self.file_name().unwrap().to_os_string();
+            if !extension.as_ref().to_str().unwrap().starts_with(".") {
+                fname.push(".");
+            }
+            fname.push(extension);
+            self.with_file_name(fname)
+        }
+    }
+}
+
+pub fn remove_item<T: PartialEq>(v: &mut Vec<T>, item: &T) -> Option<T> {
+    let pos = match v.iter().position(|x| *x == *item) {
+        Some(x) => x,
+        None => return None,
+    };
+    Some(v.remove(pos))
 }

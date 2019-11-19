@@ -13,6 +13,7 @@ readme = "README.md"
 
 [lib]
 name = "compiletest_rs"
+edition = "2018"
 
 [dependencies]
 diff = "0.1.10"
@@ -26,6 +27,8 @@ serde_json = "1.0"
 serde_derive = "1.0"
 rustfix = "0.4.1"
 tester = "0.7"
+lazy_static = "1.0"
+walkdir = "2"
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"

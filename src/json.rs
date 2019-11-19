@@ -1,21 +1,12 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+//! These structs are a subset of the ones found in `rustc_errors::json`.
+//! They are only used for deserialization of JSON output provided by libtest.
 
-use errors::{Error, ErrorKind};
+use crate::errors::{Error, ErrorKind};
+use crate::runtest::ProcRes;
+use serde::Deserialize;
 use serde_json;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::path::Path;
-use runtest::ProcRes;
-
-// These structs are a subset of the ones found in
-// `syntax::json`.
 
 #[derive(Deserialize)]
 struct Diagnostic {
@@ -25,6 +16,12 @@ struct Diagnostic {
     spans: Vec<DiagnosticSpan>,
     children: Vec<Diagnostic>,
     rendered: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ArtifactNotification {
+    #[allow(dead_code)]
+    artifact: PathBuf,
 }
 
 #[derive(Deserialize, Clone)]
@@ -72,20 +69,22 @@ struct DiagnosticCode {
     explanation: Option<String>,
 }
 
-pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
+pub fn extract_rendered(output: &str) -> String {
     output
         .lines()
         .filter_map(|line| {
             if line.starts_with('{') {
-                match serde_json::from_str::<Diagnostic>(line) {
-                    Ok(diagnostic) => diagnostic.rendered,
-                    Err(error) => {
-                        proc_res.fatal(Some(&format!(
-                            "failed to decode compiler output as json: \
-                             `{}`\nline: {}\noutput: {}",
-                            error, line, output
-                        )));
-                    }
+                if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
+                    diagnostic.rendered
+                } else if let Ok(_) = serde_json::from_str::<ArtifactNotification>(line) {
+                    // Ignore the notification.
+                    None
+                } else {
+                    print!(
+                        "failed to decode compiler output as json: line: {}\noutput: {}",
+                        line, output
+                    );
+                    panic!()
                 }
             } else {
                 // preserve non-JSON lines, such as ICEs
@@ -96,7 +95,8 @@ pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    output.lines()
+    output
+        .lines()
         .flat_map(|line| parse_line(file_name, line, output, proc_res))
         .collect()
 }
@@ -112,11 +112,11 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 expected_errors
             }
             Err(error) => {
-                proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
-                                              `{}`\noutput: {}\nline: {}",
-                                             error,
-                                             line,
-                                             output)));
+                proc_res.fatal(Some(&format!(
+                    "failed to decode compiler output as json: \
+                     `{}`\nline: {}\noutput: {}",
+                    error, line, output
+                )));
             }
         }
     } else {
@@ -124,10 +124,12 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
     }
 }
 
-fn push_expected_errors(expected_errors: &mut Vec<Error>,
-                        diagnostic: &Diagnostic,
-                        default_spans: &[&DiagnosticSpan],
-                        file_name: &str) {
+fn push_expected_errors(
+    expected_errors: &mut Vec<Error>,
+    diagnostic: &Diagnostic,
+    default_spans: &[&DiagnosticSpan],
+    file_name: &str,
+) {
     // In case of macro expansions, we need to get the span of the callsite
     let spans_info_in_this_file: Vec<_> = diagnostic
         .spans
@@ -231,8 +233,10 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 
     // Add notes for any labels that appear in the message.
-    for span in spans_in_this_file.iter()
-        .filter(|span| span.label.is_some()) {
+    for span in spans_in_this_file
+        .iter()
+        .filter(|span| span.label.is_some())
+    {
         expected_errors.push(Error {
             line_num: span.line_start,
             kind: Some(ErrorKind::Note),
@@ -246,9 +250,11 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 }
 
-fn push_backtrace(expected_errors: &mut Vec<Error>,
-                  expansion: &DiagnosticSpanMacroExpansion,
-                  file_name: &str) {
+fn push_backtrace(
+    expected_errors: &mut Vec<Error>,
+    expansion: &DiagnosticSpanMacroExpansion,
+    file_name: &str,
+) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         expected_errors.push(Error {
             line_num: expansion.span.line_start,
