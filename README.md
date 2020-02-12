@@ -22,7 +22,7 @@ nightly channels of rust. We use the [`tester`](tester) fork of Rust's builtin
 `test` crate, so that we don't have require nightly. If you are running nightly
 and want to use Rust's `test` crate directly, you need to have the rustc development
 libraries install (which you can get by running `rustup component add rustc-dev
---target nightly`). Once you have the rustc development libraries installed, you
+--toolchain nightly`). Once you have the rustc development libraries installed, you
 can use the `rustc` feature to make compiletest use them instead of the `tester`
 crate.
 
