@@ -12,7 +12,7 @@ use std::env;
 use common::Config;
 
 /// Conversion table from triple OS name to Rust SYSNAME
-const OS_TABLE: &'static [(&'static str, &'static str)] = &[
+const OS_TABLE: &[(&str, &str)] = &[
     ("android", "android"),
     ("bitrig", "bitrig"),
     ("darwin", "macos"),
@@ -30,7 +30,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("emscripten", "emscripten"),
 ];
 
-const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
+const ARCH_TABLE: &[(&str, &str)] = &[
     ("aarch64", "aarch64"),
     ("amd64", "x86_64"),
     ("arm", "arm"),

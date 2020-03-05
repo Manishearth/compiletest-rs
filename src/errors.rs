@@ -122,7 +122,7 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         Some(i) => i,
         None => return None,
     };
-    let (follow, adjusts) = if line[start + tag.len()..].chars().next().unwrap() == '|' {
+    let (follow, adjusts) = if line[start + tag.len()..].starts_with('|') {
         (true, 0)
     } else {
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())

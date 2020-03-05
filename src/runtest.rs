@@ -25,7 +25,6 @@ use util::logv;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
-use std::ffi::OsString;
 use std::fs::{self, File, create_dir_all, OpenOptions};
 use std::fmt;
 use std::io::prelude::*;
@@ -310,8 +309,8 @@ impl<'test> TestCx<'test> {
         if self.props.pp_exact.is_some() {
             // Now we have to care about line endings
             let cr = "\r".to_owned();
-            actual = actual.replace(&cr, "").to_owned();
-            expected = expected.replace(&cr, "").to_owned();
+            actual = actual.replace(&cr, "");
+            expected = expected.replace(&cr, "");
         }
 
         self.compare_source(&expected, &actual);
@@ -432,12 +431,12 @@ actual:\n\
     fn run_debuginfo_gdb_test_no_opt(&self) {
         let prefixes = if self.config.gdb_native_rust {
             // GDB with Rust
-            static PREFIXES: &'static [&'static str] = &["gdb", "gdbr"];
+            static PREFIXES: &[&str] = &["gdb", "gdbr"];
             println!("NOTE: compiletest thinks it is using GDB with native rust support");
             PREFIXES
         } else {
             // Generic GDB
-            static PREFIXES: &'static [&'static str] = &["gdb", "gdbg"];
+            static PREFIXES: &[&str] = &["gdb", "gdbg"];
             println!("NOTE: compiletest thinks it is using GDB without native rust support");
             PREFIXES
         };
@@ -832,17 +831,19 @@ actual:\n\
                     }
 
                     for &(ref command_directive, ref check_directive) in &directives {
-                        self.config.parse_name_value_directive(
-                            &line,
-                            command_directive).map(|cmd| {
-                                commands.push(cmd)
-                            });
+                        if let Some(cmd) = self
+                            .config
+                            .parse_name_value_directive(&line, command_directive)
+                        {
+                            commands.push(cmd)
+                        }
 
-                        self.config.parse_name_value_directive(
-                            &line,
-                            check_directive).map(|cmd| {
-                                check_lines.push(cmd)
-                            });
+                        if let Some(cmd) = self
+                            .config
+                            .parse_name_value_directive(&line, check_directive)
+                        {
+                            check_lines.push(cmd)
+                        }
                     }
                 }
                 Err(e) => {
@@ -1336,7 +1337,7 @@ actual:\n\
 
         // Need to be sure to put both the lib_path and the aux path in the dylib
         // search path for the child.
-        let mut path = env::split_paths(&env::var_os(dylib_env_var()).unwrap_or(OsString::new()))
+        let mut path = env::split_paths(&env::var_os(dylib_env_var()).unwrap_or_default())
             .collect::<Vec<_>>();
         if let Some(p) = aux_path {
             path.insert(0, PathBuf::from(p))
@@ -1375,7 +1376,7 @@ actual:\n\
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags
             .iter()
-            .fold(false, |acc, x| acc || x.starts_with("--target"));
+            .any(|x| x.starts_with("--target"));
 
         if !custom_target {
             let target = if self.props.force_host {
@@ -1886,8 +1887,8 @@ actual:\n\
 
         self.check_no_compiler_crash(&proc_res);
 
-        const PREFIX: &'static str = "TRANS_ITEM ";
-        const CGU_MARKER: &'static str = "@@";
+        const PREFIX: &str = "TRANS_ITEM ";
+        const CGU_MARKER: &str = "@@";
 
         let actual: Vec<TransItem> = proc_res
             .stdout
@@ -1961,7 +1962,7 @@ actual:\n\
                 println!("{}", expected_item.name);
                 println!("  expected: {}", codegen_units_to_str(&expected_item.codegen_units));
                 println!("  actual:   {}", codegen_units_to_str(&actual_item.codegen_units));
-                println!("");
+                println!();
             }
         }
 
@@ -2270,7 +2271,7 @@ actual:\n\
                 &HashSet::new(),
                 Filter::MachineApplicableOnly
             ).unwrap_or_default();
-            if suggestions.len() > 0
+            if !suggestions.is_empty()
                 && !self.props.run_rustfix
                 && !self.props.rustfix_only_machine_applicable {
                     let mut coverage_file_path = self.config.build_base.clone();
@@ -2283,7 +2284,7 @@ actual:\n\
                         .open(coverage_file_path.as_path())
                         .expect("could not create or open file");
 
-                    if let Err(_) = writeln!(file, "{}", self.testpaths.file.display()) {
+                    if writeln!(file, "{}", self.testpaths.file.display()).is_err() {
                         panic!("couldn't write to {}", coverage_file_path.display());
                     }
             }
@@ -2430,12 +2431,12 @@ actual:\n\
         }
         self.check_mir_test_timestamp(test_name, &output_file);
 
-        let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
+        let mut dumped_file = fs::File::open(output_file).unwrap();
         let mut dumped_string = String::new();
         dumped_file.read_to_string(&mut dumped_string).unwrap();
         let mut dumped_lines = dumped_string.lines().filter(|l| !l.is_empty());
         let mut expected_lines = expected_content.iter().filter(|&l| {
-            if let &ExpectedLine::Text(l) = l {
+            if let ExpectedLine::Text(l) = l {
                 !l.is_empty()
             } else {
                 true
@@ -2457,7 +2458,7 @@ actual:\n\
                                              .collect::<Vec<_>>()
                                              .join("\n");
             let f = |l: &ExpectedLine<_>| match l {
-                &ExpectedLine::Elision => "... (elided)".into(),
+                &ExpectedLine::Elision => "... (elided)",
                 &ExpectedLine::Text(t) => t
             };
             let expected_content = expected_content.iter()
@@ -2672,7 +2673,7 @@ where
     T: AsRef<str> + fmt::Debug
 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        if let &ExpectedLine::Text(ref t) = self {
+        if let ExpectedLine::Text(ref t) = self {
             write!(formatter, "{:?}", t)
         } else {
             write!(formatter, "\"...\" (Elision)")
