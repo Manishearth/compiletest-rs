@@ -1462,11 +1462,10 @@ actual:\n\
             }
         }
 
-        match allow_unused {
-            AllowUnused::Yes => {
-                rustc.args(&["-A", "unused"]);
-            }
-            AllowUnused::No => {}
+        // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
+        // overwrite this.
+        if let AllowUnused::Yes = allow_unused {
+            rustc.args(&["-A", "unused"]);
         }
 
         if self.props.force_host {
