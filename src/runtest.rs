@@ -1112,22 +1112,22 @@ actual:\n\
     }
 
     fn compile_test(&self) -> ProcRes {
-        let mut rustc = self.make_compile_args(
-            &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()));
-
-        rustc.arg("-L").arg(&self.aux_output_dir_name());
-
-        match self.config.mode {
+        let allow_unused = match self.config.mode {
             CompileFail | Ui => {
                 // compile-fail and ui tests tend to have tons of unused code as
                 // it's just testing various pieces of the compile, but we don't
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                rustc.args(&["-A", "unused"]);
+                AllowUnused::Yes
             }
-            _ => {}
-        }
+            _ => AllowUnused::No
+        };
+
+        let mut rustc = self.make_compile_args(
+            &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()), allow_unused);
+
+        rustc.arg("-L").arg(&self.aux_output_dir_name());
 
         self.compose_and_run_compiler(rustc, None)
     }
@@ -1271,7 +1271,7 @@ actual:\n\
                 testpaths: &aux_testpaths,
                 revision: self.revision
             };
-            let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
+            let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output, AllowUnused::No);
 
             let crate_type = if aux_props.no_prefer_dynamic {
                 None
@@ -1367,7 +1367,7 @@ actual:\n\
         result
     }
 
-    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
+    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation, allow_unused: AllowUnused) -> Command {
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc.arg(input_file)
             .arg("-L").arg(&self.config.build_base);
@@ -1460,6 +1460,12 @@ actual:\n\
             TargetLocation::ThisDirectory(path) => {
                 rustc.arg("--out-dir").arg(path);
             }
+        }
+
+        // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
+        // overwrite this.
+        if let AllowUnused::Yes = allow_unused {
+            rustc.args(&["-A", "unused"]);
         }
 
         if self.props.force_host {
@@ -1699,7 +1705,7 @@ actual:\n\
 
         let output_file = TargetLocation::ThisDirectory(
             self.output_base_name().parent().unwrap().to_path_buf());
-        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file, AllowUnused::No);
         rustc.arg("-L").arg(aux_dir)
             .arg("--emit=llvm-ir");
 
@@ -2343,6 +2349,7 @@ actual:\n\
             let mut rustc = self.make_compile_args(
                 &self.testpaths.file.with_extension(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
+                AllowUnused::No,
             );
             rustc.arg("-L").arg(&self.aux_output_dir_name());
             let res = self.compose_and_run_compiler(rustc, None);
@@ -2665,6 +2672,11 @@ enum TargetLocation {
 enum ExpectedLine<T: AsRef<str>> {
     Elision,
     Text(T)
+}
+
+enum AllowUnused {
+    Yes,
+    No,
 }
 
 impl<T> fmt::Debug for ExpectedLine<T>
