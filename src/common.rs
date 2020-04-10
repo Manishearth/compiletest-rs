@@ -15,7 +15,7 @@ use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
 #[cfg(feature = "rustc")]
-use rustc;
+use rustc_session;
 
 use test::ColorConfig;
 use runtest::dylib_env_var;
@@ -332,7 +332,7 @@ pub use self::config_tempdir::ConfigWithTemp;
 impl Default for Config {
     fn default() -> Config {
         #[cfg(feature = "rustc")]
-        let platform = rustc::session::config::host_triple().to_string();
+        let platform = rustc_session::config::host_triple().to_string();
 
         Config {
             compile_lib_path: PathBuf::from(""),

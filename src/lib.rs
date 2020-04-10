@@ -16,7 +16,7 @@
 #![deny(unused_imports)]
 
 #[cfg(feature = "rustc")]
-extern crate rustc;
+extern crate rustc_session;
 
 #[cfg(unix)]
 extern crate libc;
