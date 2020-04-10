@@ -1462,6 +1462,13 @@ actual:\n\
             }
         }
 
+        match allow_unused {
+            AllowUnused::Yes => {
+                rustc.args(&["-A", "unused"]);
+            }
+            AllowUnused::No => {}
+        }
+
         if self.props.force_host {
             rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
@@ -1469,13 +1476,6 @@ actual:\n\
         }
         if let Some(ref linker) = self.config.linker {
             rustc.arg(format!("-Clinker={}", linker));
-        }
-
-        match allow_unused {
-            AllowUnused::Yes => {
-                rustc.args(&["-A", "unused"]);
-            }
-            AllowUnused::No => {}
         }
 
         rustc.args(&self.props.compile_flags);
