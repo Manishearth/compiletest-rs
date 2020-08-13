@@ -10,6 +10,6 @@
 
 fn main() {
     unsafe {
-        llvm_asm!(""); //~ ERROR inline assembly is not stable enough
+        llvm_asm!(""); //~ ERROR use of unstable library feature
     }
 }
