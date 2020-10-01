@@ -22,9 +22,9 @@ fn c(x: Box<dyn Foo+Sync+Send>) {
 
 fn d(x: Box<dyn Foo>) {
     a(x); //~  ERROR mismatched types
-          //~| expected trait `Foo + std::marker::Send`, found trait `Foo`
-          //~| expected struct `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`
-          //~| found struct `std::boxed::Box<(dyn Foo + 'static)>`
+          //~| expected trait `Foo + Send`, found trait `Foo`
+          //~| expected struct `Box<(dyn Foo + Send + 'static)>`
+          //~| found struct `Box<(dyn Foo + 'static)>`
 }
 
 fn main() { }
