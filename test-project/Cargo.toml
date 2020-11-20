@@ -11,3 +11,4 @@ features = ["tmp"]
 
 [features]
 rustc = ["compiletest_rs/rustc"]
+assembly = []
