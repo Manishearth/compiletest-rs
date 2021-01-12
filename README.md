@@ -117,5 +117,5 @@ If you are unsure, open a pull request anyway and we would be glad to help!
 
 [upstream]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 [src]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src
-[tests]: https://rust-lang.github.io/rustc-guide/tests/adding.html#header-commands-configuring-rustc
+[tests]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#header-commands-configuring-rustc
 [tester]: https://crates.io/crates/tester
