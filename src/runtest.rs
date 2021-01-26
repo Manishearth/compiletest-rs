@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::{Config, TestPaths};
-use common::{UI_FIXED, UI_STDERR, UI_STDOUT};
+use common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
@@ -20,7 +20,7 @@ use json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use header::TestProps;
-use util::logv;
+use crate::util::{logv, PathBufExt};
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -2167,6 +2167,18 @@ actual:\n\
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
 
+        if self.config.bless {
+            cmd.env("RUSTC_BLESS_TEST", "--bless");
+            // Assume this option is active if the environment variable is "defined", with _any_ value.
+            // As an example, a `Makefile` can use this option by:
+            //
+            //   ifdef RUSTC_BLESS_TEST
+            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
+            //   else
+            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
+            //   endif
+        }
+
         if self.config.target.contains("msvc") {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.
@@ -2323,16 +2335,17 @@ actual:\n\
         }
 
         if errors > 0 {
-            println!("To update references, run this command from build directory:");
+            println!("To update references, rerun the tests and pass the `--bless` flag");
             let relative_path_to_file =
-                self.testpaths.relative_dir
-                              .join(self.testpaths.file.file_name().unwrap());
-            println!("{}/update-references.sh '{}' '{}'",
-                     self.config.src_base.display(),
-                     self.config.build_base.display(),
-                     relative_path_to_file.display());
-            self.fatal_proc_rec(&format!("{} errors occurred comparing output.", errors),
-                                &proc_res);
+                self.testpaths.relative_dir.join(self.testpaths.file.file_name().unwrap());
+            println!(
+                "To only update this specific test, also pass `--test-args {}`",
+                relative_path_to_file.display(),
+            );
+            self.fatal_proc_rec(
+                &format!("{} errors occurred comparing output.", errors),
+                &proc_res,
+            );
         }
 
         if self.props.run_pass {
@@ -2566,11 +2579,14 @@ actual:\n\
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {
-        let extension = match self.revision {
-            Some(r) => format!("{}.{}", r, kind),
-            None => kind.to_string(),
-        };
-        self.testpaths.file.with_extension(extension)
+        let mut path =
+            expected_output_path(&self.testpaths, self.revision, kind);
+
+        if !path.exists() {
+            path = expected_output_path(&self.testpaths, self.revision, kind);
+        }
+
+        path
     }
 
     fn load_expected_output(&self, path: &Path) -> String {
@@ -2594,35 +2610,68 @@ actual:\n\
         })
     }
 
+    fn delete_file(&self, file: &PathBuf) {
+        if !file.exists() {
+            // Deleting a nonexistant file would error.
+            return;
+        }
+        if let Err(e) = fs::remove_file(file) {
+            self.fatal(&format!("failed to delete `{}`: {}", file.display(), e,));
+        }
+    }
+
     fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
         if actual == expected {
             return 0;
         }
 
-        println!("normalized {}:\n{}\n", kind, actual);
-        println!("expected {}:\n{}\n", kind, expected);
-        println!("diff of {}:\n", kind);
-
-        for diff in diff::lines(expected, actual) {
-            match diff {
-                diff::Result::Left(l)    => println!("-{}", l),
-                diff::Result::Both(l, _) => println!(" {}", l),
-                diff::Result::Right(r)   => println!("+{}", r),
+        if !self.config.bless {
+            if expected.is_empty() {
+                println!("normalized {}:\n{}\n", kind, actual);
+            } else {
+                println!("diff of {}:\n", kind);
+                for diff in diff::lines(expected, actual) {
+                    match diff {
+                        diff::Result::Left(l)    => println!("-{}", l),
+                        diff::Result::Both(l, _) => println!(" {}", l),
+                        diff::Result::Right(r)   => println!("+{}", r),
+                    }
+                }
             }
         }
 
-        let output_file = self.output_base_name().with_extension(kind);
-        match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
-            Ok(()) => { }
-            Err(e) => {
-                self.fatal(&format!("failed to write {} to `{}`: {}",
-                                    kind, output_file.display(), e))
+        let output_file = self
+            .output_base_name()
+            .with_extra_extension(self.revision.unwrap_or(""))
+            .with_extra_extension(kind);
+
+        let mut files = vec![output_file];
+        if self.config.bless {
+            files.push(expected_output_path(
+                self.testpaths,
+                self.revision,
+                kind,
+            ));
+        }
+
+        for output_file in &files {
+            if actual.is_empty() {
+                self.delete_file(output_file);
+            } else if let Err(err) = fs::write(&output_file, &actual) {
+                self.fatal(&format!(
+                    "failed to write {} to `{}`: {}",
+                    kind,
+                    output_file.display(),
+                    err,
+                ));
             }
         }
 
         println!("\nThe actual {0} differed from the expected {0}.", kind);
-        println!("Actual {} saved to {}", kind, output_file.display());
-        1
+        for output_file in files {
+            println!("Actual {} saved to {}", kind, output_file.display());
+        }
+        if self.config.bless { 0 } else { 1 }
     }
 }
 

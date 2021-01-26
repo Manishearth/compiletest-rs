@@ -102,6 +102,9 @@ impl fmt::Display for Mode {
 
 #[derive(Clone)]
 pub struct Config {
+    /// `true` to overwrite stderr/stdout/fixed files instead of complaining about changes in output.
+    pub bless: bool,
+
     /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
 
@@ -239,6 +242,25 @@ pub struct TestPaths {
     pub relative_dir: PathBuf, // e.g., foo/bar
 }
 
+/// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
+pub fn expected_output_path(
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+    kind: &str,
+) -> PathBuf {
+    assert!(UI_EXTENSIONS.contains(&kind));
+    let mut parts = Vec::new();
+
+    if let Some(x) = revision {
+        parts.push(x);
+    }
+    parts.push(kind);
+
+    let extension = parts.join(".");
+    testpaths.file.with_extension(extension)
+}
+
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
@@ -335,6 +357,7 @@ impl Default for Config {
         let platform = rustc_session::config::host_triple().to_string();
 
         Config {
+            bless: false,
             compile_lib_path: PathBuf::from(""),
             run_lib_path: PathBuf::from(""),
             rustc_path: PathBuf::from("rustc"),
