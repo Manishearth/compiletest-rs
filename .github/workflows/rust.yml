@@ -1,0 +1,62 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  default-features:
+    strategy:
+      matrix:
+        rust: ["stable", "beta", "nightly"]
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust }}
+        override: true
+
+    - name: Run tests
+      run: cargo test
+
+    - name: Run test-project tests
+      run: cd test-project && cargo test
+
+
+  rustc-nightly-feature:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+    - name: Add rustc-dev component
+      run: rustup component add rustc-dev
+
+    - name: Run tests
+      run: cargo +nightly build --features rustc
+
+    - name: Run test-project tests with `rustc` feature
+      run: cd test-project && cargo +nightly test --features rustc
+
