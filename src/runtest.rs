@@ -12,7 +12,7 @@ use common::{Config, TestPaths};
 use common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
-use common::{Incremental, RunMake, Ui, MirOpt};
+use common::{Incremental, RunMake, Ui, MirOpt, Assembly};
 use diff;
 use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
@@ -142,6 +142,7 @@ impl<'test> TestCx<'test> {
             RunMake => self.run_rmake_test(),
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
+            Assembly => self.run_assembly_test(),
         }
     }
 
@@ -1441,7 +1442,8 @@ actual:\n\
             Codegen |
             Rustdoc |
             RunMake |
-            CodegenUnits => {
+            CodegenUnits |
+            Assembly => {
                 // do not use JSON output
             }
         }
@@ -1712,10 +1714,35 @@ actual:\n\
         self.compose_and_run_compiler(rustc, None)
     }
 
-    fn check_ir_with_filecheck(&self) -> ProcRes {
-        let irfile = self.output_base_name().with_extension("ll");
+    fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
+        // This works with both `--emit asm` (as default output name for the assembly)
+        // and `ptx-linker` because the latter can write output at requested location.
+        let output_path = self.output_base_name().with_extension("s");
+
+        let output_file = TargetLocation::ThisFile(output_path.clone());
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file, AllowUnused::No);
+
+        rustc.arg("-L").arg(self.aux_output_dir_name());
+
+        match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
+            Some("emit-asm") => {
+                rustc.arg("--emit=asm");
+            }
+
+            Some("ptx-linker") => {
+                // No extra flags needed.
+            }
+
+            Some(_) => self.fatal("unknown 'assembly-output' header"),
+            None => self.fatal("missing 'assembly-output' header"),
+        }
+
+        (self.compose_and_run_compiler(rustc, None), output_path)
+    }
+
+    fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
-        filecheck.arg("--input-file").arg(irfile)
+        filecheck.arg("--input-file").arg(output)
             .arg(&self.testpaths.file);
         self.compose_and_run(filecheck, "", None, None)
     }
@@ -1727,12 +1754,29 @@ actual:\n\
             self.fatal("missing --llvm-filecheck");
         }
 
-        let mut proc_res = self.compile_test_and_save_ir();
+        let proc_res = self.compile_test_and_save_ir();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        proc_res = self.check_ir_with_filecheck();
+        let output_path = self.output_base_name().with_extension("ll");
+        let proc_res = self.verify_with_filecheck(&output_path);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+        }
+    }
+
+    fn run_assembly_test(&self) {
+        if self.config.llvm_filecheck.is_none() {
+            self.fatal("missing --llvm-filecheck");
+        }
+
+        let (proc_res, output_path) = self.compile_test_and_save_assembly();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        let proc_res = self.verify_with_filecheck(&output_path);
         if !proc_res.status.success() {
             self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
         }

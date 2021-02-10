@@ -37,6 +37,7 @@ pub enum Mode {
     RunMake,
     Ui,
     MirOpt,
+    Assembly,
 }
 
 impl Mode {
@@ -72,6 +73,7 @@ impl FromStr for Mode {
             "run-make" => Ok(RunMake),
             "ui" => Ok(Ui),
             "mir-opt" => Ok(MirOpt),
+            "assembly" => Ok(Assembly),
             _ => Err(()),
         }
     }
@@ -95,6 +97,7 @@ impl fmt::Display for Mode {
                               RunMake => "run-make",
                               Ui => "ui",
                               MirOpt => "mir-opt",
+                              Assembly => "assembly",
                           },
                           f)
     }
