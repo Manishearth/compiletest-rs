@@ -148,8 +148,8 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Only run tests that match this filter
-    pub filter: Option<String>,
+    /// Only run tests that match these filters
+    pub filters: Vec<String>,
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
@@ -372,7 +372,7 @@ impl Default for Config {
             stage_id: "stage-id".to_owned(),
             mode: Mode::RunPass,
             run_ignored: false,
-            filter: None,
+            filters: vec![],
             filter_exact: false,
             logfile: None,
             runtool: None,
