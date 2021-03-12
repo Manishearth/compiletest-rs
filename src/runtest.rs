@@ -1498,6 +1498,10 @@ actual:\n\
             let mut fname = f.file_name().unwrap().to_os_string();
             fname.push(".js");
             f.set_file_name(&fname);
+        } else if self.config.target.contains("spirv") {
+            let mut fname = f.file_name().unwrap().to_os_string();
+            fname.push(".spv");
+            f.set_file_name(&fname);
         } else if self.config.target.contains("wasm32") {
             let mut fname = f.file_name().unwrap().to_os_string();
             fname.push(".wasm");
