@@ -2595,17 +2595,30 @@ actual:\n\
     }
 
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
-        let parent_dir = self.testpaths.file.parent().unwrap();
         let cflags = self.props.compile_flags.join(" ");
-        let json = cflags.contains("--error-format json") ||
-                   cflags.contains("--error-format pretty-json");
-        let parent_dir_str = if json {
-            parent_dir.display().to_string().replace("\\", "\\\\")
-        } else {
-            parent_dir.display().to_string()
+        let json = cflags.contains("--error-format json")
+            || cflags.contains("--error-format pretty-json")
+            || cflags.contains("--error-format=json")
+            || cflags.contains("--error-format=pretty-json")
+            || cflags.contains("--output-format json")
+            || cflags.contains("--output-format=json");
+
+        let mut normalized = output.to_string();
+
+        let mut normalize_path = |from: &Path, to: &str| {
+            let mut from = from.display().to_string();
+            if json {
+                from = from.replace("\\", "\\\\");
+            }
+            normalized = normalized.replace(&from, to);
         };
 
-        let mut normalized = output.replace(&parent_dir_str, "$DIR");
+        let parent_dir = self.testpaths.file.parent().unwrap();
+        normalize_path(parent_dir, "$DIR");
+
+        // Paths into the build directory
+        let test_build_dir = &self.config.build_base;
+        normalize_path(test_build_dir, "$TEST_BUILD_DIR");
 
         if json {
             // escaped newlines in json strings should be readable
