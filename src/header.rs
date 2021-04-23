@@ -111,7 +111,7 @@ impl EarlyProps {
                     let v_max = range_components[1].expect(ERROR_MESSAGE);
                     (v_min, v_max)
                 }
-                _ => panic!(ERROR_MESSAGE),
+                _ => panic!("{}", ERROR_MESSAGE),
             }
         }
 
