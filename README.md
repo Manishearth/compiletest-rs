@@ -14,7 +14,7 @@ To use `compiletest-rs` in your application, add the following to `Cargo.toml`
 
 ```toml
 [dev-dependencies]
-compiletest_rs = "*"
+compiletest_rs = "0.7"
 ```
 
 By default, `compiletest-rs` should be able to run on both stable, beta and
@@ -28,7 +28,7 @@ crate.
 
 ```toml
 [dev-dependencies]
-compiletest_rs = { version = "*", features = [ "rustc" ] }
+compiletest_rs = { version = "0.7", features = [ "rustc" ] }
 ```
 
 Create a `tests` folder in the root folder of your project. Create a test file
