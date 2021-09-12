@@ -2616,6 +2616,10 @@ actual:\n\
         let parent_dir = self.testpaths.file.parent().unwrap();
         normalize_path(parent_dir, "$DIR");
 
+        let src_dir_str = std::env::current_dir().unwrap();
+        let src_dir = Path::new(&src_dir_str);
+        normalize_path(src_dir, "$SRC_DIR");
+
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
         normalize_path(test_build_dir, "$TEST_BUILD_DIR");
