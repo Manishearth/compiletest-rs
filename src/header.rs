@@ -627,7 +627,7 @@ impl Config {
     }
 
     fn parse_edition(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "edition")
+        self.parse_name_value_directive(line, "edition").or_else(|| self.edition.clone())
     }
 }
 
