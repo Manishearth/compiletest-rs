@@ -287,6 +287,7 @@ impl TestProps {
                  testfile: &Path,
                  cfg: Option<&str>,
                  config: &Config) {
+        let mut has_edition = false;
         iter_header(testfile,
                     cfg,
                     &mut |ln| {
@@ -301,6 +302,7 @@ impl TestProps {
 
             if let Some(edition) = config.parse_edition(ln) {
                 self.compile_flags.push(format!("--edition={}", edition));
+                has_edition = true;
             }
 
             if let Some(r) = config.parse_revisions(ln) {
@@ -402,6 +404,10 @@ impl TestProps {
                     self.exec_env.push(((*key).to_owned(), val))
                 }
             }
+        }
+        
+        if let (Some(edition), false) = (&config.edition, has_edition) {
+            self.compile_flags.push(format!("--edition={}", edition));
         }
     }
 }
@@ -627,7 +633,7 @@ impl Config {
     }
 
     fn parse_edition(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "edition").or_else(|| self.edition.clone())
+        self.parse_name_value_directive(line, "edition")
     }
 }
 
