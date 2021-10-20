@@ -226,6 +226,9 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
+    /// The default Rust edition
+    pub edition: Option<String>,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -416,6 +419,7 @@ impl Default for Config {
             llvm_components: "llvm-components".to_string(),
             llvm_cxxflags: "llvm-cxxflags".to_string(),
             nodejs: None,
+            edition: None,
         }
     }
 }
