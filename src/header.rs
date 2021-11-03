@@ -41,7 +41,17 @@ impl EarlyProps {
                     &mut |ln| {
             props.ignore =
                 props.ignore ||
-                config.parse_cfg_name_directive(ln, "ignore") ||
+                config.parse_cfg_name_directive(ln, "ignore");
+
+            if config.has_cfg_prefix(ln, "only") {
+                props.ignore = match config.parse_cfg_name_directive(ln, "only") {
+                    true => props.ignore,
+                    false => true,
+                };
+            }
+
+            props.ignore =
+                props.ignore ||
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
                 ignore_llvm(config, ln);
@@ -405,7 +415,7 @@ impl TestProps {
                 }
             }
         }
-        
+
         if let (Some(edition), false) = (&config.edition, has_edition) {
             self.compile_flags.push(format!("--edition={}", edition));
         }
@@ -589,6 +599,13 @@ impl Config {
         } else {
             false
         }
+    }
+
+    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
+        // returns whether this line contains this prefix or not. For prefix
+        // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
+        // "ignore-android" etc.
+        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
