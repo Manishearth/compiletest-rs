@@ -65,15 +65,15 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
             return os == name;
         }
     }
-    panic!("Cannot determine OS from triple");
+    false
 }
-pub fn get_arch(triple: &str) -> &'static str {
+pub fn get_arch(triple: &str) -> &str {
     for &(triple_arch, arch) in ARCH_TABLE {
         if triple.contains(triple_arch) {
             return arch;
         }
     }
-    panic!("Cannot determine Architecture from triple");
+    triple.split('-').nth(0).unwrap()
 }
 
 pub fn get_env(triple: &str) -> Option<&str> {
