@@ -589,6 +589,7 @@ impl Config {
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage
                 Some(name) == util::get_env(&self.target) ||        // env
+                self.target.ends_with(name) ||                      // target and env
                 match self.mode {
                     common::DebugInfoGdb => name == "gdb",
                     common::DebugInfoLldb => name == "lldb",
