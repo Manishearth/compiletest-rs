@@ -397,7 +397,7 @@ actual:\n\
         let aux_dir = self.aux_output_dir_name();
 
         rustc.arg("-")
-            .arg("-Zno-trans")
+            .arg("-Zno-codegen")
             .arg("--out-dir").arg(&out_dir)
             .arg(&format!("--target={}", target))
             .arg("-L").arg(&self.config.build_base)
