@@ -144,6 +144,10 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         list: false,
         options: test::Options::new(),
         time_options: None,
+        #[cfg(feature = "rustc")]
+        shuffle: false,
+        #[cfg(feature = "rustc")]
+        shuffle_seed: None,
     }
 }
 
@@ -274,12 +278,15 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             name: make_test_name(config, testpaths),
             ignore: early_props.ignore,
             should_panic: should_panic,
+            #[cfg(not(feature = "rustc"))]
             allow_fail: false,
             #[cfg(feature = "rustc")]
             compile_fail: false,
             #[cfg(feature = "rustc")]
             no_run: false,
             test_type: test::TestType::IntegrationTest,
+            #[cfg(feature = "rustc")]
+            ignore_message: None,
         },
         testfn: make_test_closure(config, testpaths),
     }
