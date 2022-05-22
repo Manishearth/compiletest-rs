@@ -9,10 +9,8 @@
 // except according to those terms.
 
 #![crate_type = "lib"]
-
 #![cfg_attr(feature = "rustc", feature(rustc_private))]
 #![cfg_attr(feature = "rustc", feature(test))]
-
 #![deny(unused_imports)]
 
 #[cfg(feature = "rustc")]
@@ -25,50 +23,54 @@ extern crate test;
 #[cfg(not(feature = "rustc"))]
 extern crate tester as test;
 
-#[cfg(feature = "tmp")] extern crate tempfile;
+#[cfg(feature = "tmp")]
+extern crate tempfile;
 
 #[macro_use]
 extern crate log;
-extern crate regex;
-extern crate filetime;
 extern crate diff;
+extern crate filetime;
+extern crate regex;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 extern crate rustfix;
 
+use common::{DebugInfoGdb, DebugInfoLldb, Pretty};
+use common::{Mode, TestPaths};
 use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use common::{Mode, TestPaths};
-use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 
 use self::header::EarlyProps;
 
-pub mod uidiff;
-pub mod util;
-mod json;
-pub mod header;
-pub mod runtest;
 pub mod common;
 pub mod errors;
+pub mod header;
+mod json;
 mod read2;
+pub mod runtest;
+pub mod uidiff;
+pub mod util;
 
 pub use common::Config;
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
         if let DebugInfoGdb = config.mode {
-            println!("{} debug-info test uses tcp 5039 port.\
-                     please reserve it", config.target);
+            println!(
+                "{} debug-info test uses tcp 5039 port.\
+                     please reserve it",
+                config.target
+            );
         }
 
         // android debug-info test uses remote debugger
         // so, we test 1 thread at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        env::set_var("RUST_TEST_THREADS","1");
+        env::set_var("RUST_TEST_THREADS", "1");
     }
 
     if let DebugInfoLldb = config.mode {
@@ -86,7 +88,11 @@ pub fn run_tests(config: &Config) {
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+                panic!(
+                    "Could not delete {} due to {}",
+                    coverage_file_path.display(),
+                    e
+                )
             }
         }
     }
@@ -115,14 +121,22 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         filter_exact: config.filter_exact,
         exclude_should_panic: false,
         force_run_in_process: false,
-        run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
-        format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
+        run_ignored: if config.run_ignored {
+            test::RunIgnored::Yes
+        } else {
+            test::RunIgnored::No
+        },
+        format: if config.quiet {
+            test::OutputFormat::Terse
+        } else {
+            test::OutputFormat::Pretty
+        },
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
         nocapture: match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",
-            Err(_) => false
+            Err(_) => false,
         },
         color: test::AutoColor,
         test_threads: None,
@@ -134,24 +148,26 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}",
-           config.src_base.display());
+    debug!("making tests from {:?}", config.src_base.display());
     let mut tests = Vec::new();
-    collect_tests_from_dir(config,
-                           &config.src_base,
-                           &config.src_base,
-                           &PathBuf::new(),
-                           &mut tests)
-        .unwrap();
+    collect_tests_from_dir(
+        config,
+        &config.src_base,
+        &config.src_base,
+        &PathBuf::new(),
+        &mut tests,
+    )
+    .unwrap();
     tests
 }
 
-fn collect_tests_from_dir(config: &Config,
-                          base: &Path,
-                          dir: &Path,
-                          relative_dir_path: &Path,
-                          tests: &mut Vec<test::TestDescAndFn>)
-                          -> io::Result<()> {
+fn collect_tests_from_dir(
+    config: &Config,
+    base: &Path,
+    dir: &Path,
+    relative_dir_path: &Path,
+    tests: &mut Vec<test::TestDescAndFn>,
+) -> io::Result<()> {
     // Ignore directories that contain a file
     // `compiletest-ignore-dir`.
     for file in fs::read_dir(dir)? {
@@ -167,7 +183,7 @@ fn collect_tests_from_dir(config: &Config,
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
             tests.push(make_test(config, &paths));
-            return Ok(())
+            return Ok(());
         }
     }
 
@@ -215,11 +231,7 @@ fn collect_tests_from_dir(config: &Config,
                 fs::create_dir_all(&build_dir).unwrap();
             } else {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(config,
-                                       base,
-                                       &file_path,
-                                       &relative_file_path,
-                                       tests)?;
+                collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -248,10 +260,12 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
         Pretty => test::ShouldPanic::No,
-        _ => if early_props.should_fail {
-            test::ShouldPanic::Yes
-        } else {
-            test::ShouldPanic::No
+        _ => {
+            if early_props.should_fail {
+                test::ShouldPanic::Yes
+            } else {
+                test::ShouldPanic::No
+            }
         }
     };
 
@@ -272,21 +286,23 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
 }
 
 fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    let stamp_name = format!("{}-{}.stamp",
-                             testpaths.file.file_name().unwrap()
-                                           .to_str().unwrap(),
-                             config.stage_id);
-    config.build_base.canonicalize()
-          .unwrap_or_else(|_| config.build_base.clone())
-          .join(stamp_name)
+    let stamp_name = format!(
+        "{}-{}.stamp",
+        testpaths.file.file_name().unwrap().to_str().unwrap(),
+        config.stage_id
+    );
+    config
+        .build_base
+        .canonicalize()
+        .unwrap_or_else(|_| config.build_base.clone())
+        .join(stamp_name)
 }
 
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
-    let path =
-        PathBuf::from(config.src_base.file_name().unwrap())
+    let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
     test::DynTestName(format!("[{}] {}", config.mode, path.display()))
@@ -296,7 +312,7 @@ pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn
     let config = config.clone();
     let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
-        let config = config.clone();  // FIXME: why is this needed?
+        let config = config.clone(); // FIXME: why is this needed?
         runtest::run(config, &testpaths)
     }))
 }
@@ -315,7 +331,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     for (pos, c) in full_version_line.char_indices() {
         if prev_was_digit || !c.is_digit(10) {
             prev_was_digit = c.is_digit(10);
-            continue
+            continue;
         }
 
         prev_was_digit = true;
@@ -335,18 +351,25 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
         let line = &line[next_split + 1..];
 
         let (minor, patch) = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => if line.as_bytes()[idx] == b'.' {
-                let patch = &line[idx + 1..];
+            Some(idx) => {
+                if line.as_bytes()[idx] == b'.' {
+                    let patch = &line[idx + 1..];
 
-                let patch_len = patch.find(|c: char| !c.is_digit(10))
-                                                       .unwrap_or_else(|| patch.len());
-                let patch = &patch[..patch_len];
-                let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
+                    let patch_len = patch
+                        .find(|c: char| !c.is_digit(10))
+                        .unwrap_or_else(|| patch.len());
+                    let patch = &patch[..patch_len];
+                    let patch = if patch_len > 3 || patch_len == 0 {
+                        None
+                    } else {
+                        Some(patch)
+                    };
 
-                (&line[..idx], patch)
-            } else {
-                (&line[..idx], None)
-            },
+                    (&line[..idx], patch)
+                } else {
+                    (&line[..idx], None)
+                }
+            }
             None => (line, None),
         };
 
@@ -382,24 +405,41 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
             let full_version_line = full_version_line.trim();
 
             for (pos, l) in full_version_line.char_indices() {
-                if l != 'l' && l != 'L' { continue }
-                if pos + 5 >= full_version_line.len() { continue }
+                if l != 'l' && l != 'L' {
+                    continue;
+                }
+                if pos + 5 >= full_version_line.len() {
+                    continue;
+                }
                 let l = full_version_line[pos + 1..].chars().next().unwrap();
-                if l != 'l' && l != 'L' { continue }
+                if l != 'l' && l != 'L' {
+                    continue;
+                }
                 let d = full_version_line[pos + 2..].chars().next().unwrap();
-                if d != 'd' && d != 'D' { continue }
+                if d != 'd' && d != 'D' {
+                    continue;
+                }
                 let b = full_version_line[pos + 3..].chars().next().unwrap();
-                if b != 'b' && b != 'B' { continue }
+                if b != 'b' && b != 'B' {
+                    continue;
+                }
                 let dash = full_version_line[pos + 4..].chars().next().unwrap();
-                if dash != '-' { continue }
+                if dash != '-' {
+                    continue;
+                }
 
-                let vers = full_version_line[pos + 5..].chars().take_while(|c| {
-                    c.is_digit(10)
-                }).collect::<String>();
-                if !vers.is_empty() { return Some(vers) }
+                let vers = full_version_line[pos + 5..]
+                    .chars()
+                    .take_while(|c| c.is_digit(10))
+                    .collect::<String>();
+                if !vers.is_empty() {
+                    return Some(vers);
+                }
             }
-            println!("Could not extract LLDB version from line '{}'",
-                     full_version_line);
+            println!(
+                "Could not extract LLDB version from line '{}'",
+                full_version_line
+            );
         }
     }
     None
