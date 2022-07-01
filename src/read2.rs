@@ -135,24 +135,24 @@ mod imp {
         port.add_handle(1, &err_pipe)?;
 
         unsafe {
-            let mut out_pipe = Pipe::new(out_pipe, &mut out);
-            let mut err_pipe = Pipe::new(err_pipe, &mut err);
+            let mut out_pipe = unsafe { Pipe::new(out_pipe, &mut out) };
+            let mut err_pipe = unsafe { Pipe::new(err_pipe, &mut err) };
 
-            out_pipe.read()?;
-            err_pipe.read()?;
+            unsafe {out_pipe.read()?};
+            unsafe {err_pipe.read()?};
 
             let mut status = [CompletionStatus::zero(), CompletionStatus::zero()];
 
             while !out_pipe.done || !err_pipe.done {
                 for status in port.get_many(&mut status, None)? {
                     if status.token() == 0 {
-                        out_pipe.complete(status);
+                        unsafe { out_pipe.complete(status) };
                         data(true, out_pipe.dst, out_pipe.done);
-                        out_pipe.read()?;
+                        unsafe { out_pipe.read()? };
                     } else {
-                        err_pipe.complete(status);
+                        unsafe { err_pipe.complete(status) };
                         data(false, err_pipe.dst, err_pipe.done);
-                        err_pipe.read()?;
+                        unsafe { err_pipe.read()? };
                     }
                 }
             }
