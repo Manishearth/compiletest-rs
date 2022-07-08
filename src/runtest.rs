@@ -2408,10 +2408,13 @@ actual:\n\
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
             let mut rustc = self.make_compile_args(
-                &self.testpaths.file.with_extension(UI_FIXED),
+                &expected_fixed_path,
                 TargetLocation::ThisFile(self.make_exe_name()),
                 AllowUnused::No,
             );
+            // Set the crate name to avoid `file.revision.fixed` inferring the
+            // invalid name `file.revision`
+            rustc.arg("--crate-name=fixed");
             rustc.arg("-L").arg(&self.aux_output_dir_name());
             let res = self.compose_and_run_compiler(rustc, None);
             if !res.status.success() {
