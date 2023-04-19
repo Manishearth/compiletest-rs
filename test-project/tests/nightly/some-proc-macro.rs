@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:simple_proc_macro.rs
+//@run-pass
+//@aux-build:simple_proc_macro.rs
 
 #![feature(proc_macro_hygiene)]
 

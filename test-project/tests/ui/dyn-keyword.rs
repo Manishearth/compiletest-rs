@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused_variables)]
 #![deny(keyword_idents)]

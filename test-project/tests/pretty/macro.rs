@@ -1,6 +1,6 @@
-// pretty-compare-only
-// pretty-mode:expanded
-// pp-exact:macro.pp
+//@pretty-compare-only
+//@pretty-mode:expanded
+//@pp-exact:macro.pp
 
 macro_rules! square {
     ($x:expr) => {

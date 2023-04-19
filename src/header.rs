@@ -435,7 +435,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if let Some(ln) = ln.strip_prefix("//[") {
+        } else if let Some(ln) = ln.strip_prefix("//@[") {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some((lncfg, ln)) = ln.split_once(']') {
                 if cfg == Some(lncfg) {
@@ -447,7 +447,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
                     ln
                 )
             }
-        } else if let Some(ln) = ln.strip_prefix("//") {
+        } else if let Some(ln) = ln.strip_prefix("//@") {
             it(ln.trim_start());
         }
     }
