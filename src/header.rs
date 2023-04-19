@@ -435,23 +435,20 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with("//[") {
+        } else if let Some(ln) = ln.strip_prefix("//[") {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let lncfg = &ln[3..close_brace];
-                let matches = match cfg {
-                    Some(s) => s == &lncfg[..],
-                    None => false,
-                };
-                if matches {
-                    it(ln[(close_brace + 1) ..].trim_start());
+            if let Some((lncfg, ln)) = ln.split_once(']') {
+                if cfg == Some(lncfg) {
+                    it(ln.trim_start());
                 }
             } else {
-                panic!("malformed condition directive: expected `//[foo]`, found `{}`",
-                       ln)
+                panic!(
+                    "malformed condition directive: expected `//[foo]`, found `{}`",
+                    ln
+                )
             }
-        } else if ln.starts_with("//") {
-            it(ln[2..].trim_start());
+        } else if let Some(ln) = ln.strip_prefix("//") {
+            it(ln.trim_start());
         }
     }
     return;
