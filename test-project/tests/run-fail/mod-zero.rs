@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:attempted remainder with a divisor of zero
+//@error-pattern:attempted remainder with a divisor of zero
 fn main() {
     let y = 0;
     let _z = 1 % y;

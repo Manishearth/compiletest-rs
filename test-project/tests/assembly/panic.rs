@@ -1,5 +1,5 @@
-// assembly-output: emit-asm
-// compile-flags: --crate-type rlib
+//@assembly-output: emit-asm
+//@compile-flags: --crate-type rlib
 #![no_std]
 
 #[no_mangle]

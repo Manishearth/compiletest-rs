@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-// error-pattern:meep
+//@error-pattern:meep
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

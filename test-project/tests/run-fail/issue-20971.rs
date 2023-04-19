@@ -10,7 +10,7 @@
 
 // Regression test for Issue #20971.
 
-// error-pattern:Hello, world!
+//@error-pattern:Hello, world!
 
 pub trait Parser {
     type Input;

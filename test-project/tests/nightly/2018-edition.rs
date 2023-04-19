@@ -1,5 +1,5 @@
-// edition:2018
-// compile-pass
+//@edition:2018
+//@compile-pass
 
 pub struct Foo;
 impl Foo {

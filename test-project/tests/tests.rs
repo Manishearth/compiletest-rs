@@ -18,6 +18,7 @@ fn run_mode(mode: &'static str, custom_dir: Option<&'static str>) {
             .into(),
     );
     config.clean_rmeta();
+    config.strict_headers = true;
 
     compiletest::run_tests(&config);
 }

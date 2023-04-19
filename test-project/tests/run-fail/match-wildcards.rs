@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:squirrelcupcake
+//@error-pattern:squirrelcupcake
 fn cmp() -> int {
     match (Some('a'), None::<char>) {
         (Some(_), _) => { panic!("squirrelcupcake"); }

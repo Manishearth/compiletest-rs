@@ -38,6 +38,7 @@ impl EarlyProps {
 
         iter_header(testfile,
                     None,
+                    config,
                     &mut |ln| {
             props.ignore =
                 props.ignore ||
@@ -300,6 +301,7 @@ impl TestProps {
         let mut has_edition = false;
         iter_header(testfile,
                     cfg,
+                    config,
                     &mut |ln| {
             if let Some(ep) = config.parse_error_pattern(ln) {
                 self.error_patterns.push(ep);
@@ -422,10 +424,16 @@ impl TestProps {
     }
 }
 
-fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
+const HEADER_PREFIXES: [[&str; 2]; 2] = [
+    ["//", "//["],
+    ["//@", "//@["],
+];
+
+fn iter_header(testfile: &Path, cfg: Option<&str>, config: &Config, it: &mut dyn FnMut(&str)) {
     if testfile.is_dir() {
         return;
     }
+    let header_prefix = HEADER_PREFIXES[config.strict_headers as usize];
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
@@ -435,23 +443,20 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with("//[") {
+        } else if let Some(ln) = ln.strip_prefix(header_prefix[1]) {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let lncfg = &ln[3..close_brace];
-                let matches = match cfg {
-                    Some(s) => s == &lncfg[..],
-                    None => false,
-                };
-                if matches {
-                    it(ln[(close_brace + 1) ..].trim_start());
+            if let Some((lncfg, ln)) = ln.split_once(']') {
+                if cfg == Some(lncfg) {
+                    it(ln.trim_start());
                 }
             } else {
-                panic!("malformed condition directive: expected `//[foo]`, found `{}`",
-                       ln)
+                panic!(
+                    "malformed condition directive: expected `//[foo]`, found `{}`",
+                    ln
+                )
             }
-        } else if ln.starts_with("//") {
-            it(ln[2..].trim_start());
+        } else if let Some(ln) = ln.strip_prefix(header_prefix[0]) {
+            it(ln.trim_start());
         }
     }
     return;

@@ -229,6 +229,11 @@ pub struct Config {
     /// The default Rust edition
     pub edition: Option<String>,
 
+    /// Whether parsing of headers uses `//@` and errors on malformed headers or
+    /// just allows any comment to have headers and silently ignores things that don't parse
+    /// as a header.
+    pub strict_headers: bool,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -420,6 +425,7 @@ impl Default for Config {
             llvm_cxxflags: "llvm-cxxflags".to_string(),
             nodejs: None,
             edition: None,
+            strict_headers: false,
         }
     }
 }
