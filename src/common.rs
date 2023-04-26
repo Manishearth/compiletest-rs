@@ -300,23 +300,28 @@ impl Config {
         self.target_rustcflags = Some(flags);
     }
 
-    /// Remove rmeta files from target `deps` directory
+    /// Remove .rmeta files from target directories, along with matching artifacts.
     ///
-    /// These files are created by `cargo check`, and conflict with
-    /// `cargo build` rlib files, causing E0464 for tests which use
-    /// the parent crate.
+    /// These files are created by commands like `cargo check` and `cargo clippy`, and
+    /// conflict with `cargo build` rlib files, causing E0463 and E0464 errors for tests
+    /// which use the parent crate.
     pub fn clean_rmeta(&self) {
         if self.target_rustcflags.is_some() {
-            for directory in self.target_rustcflags
-                .as_ref()
-                .unwrap()
-                .split_whitespace()
-                .filter(|s| s.ends_with("/deps"))
-            {
+            for directory in self.target_rustcflags.as_ref().unwrap().split_whitespace() {
                 if let Ok(mut entries) = read_dir(directory) {
                     while let Some(Ok(entry)) = entries.next() {
-                        if entry.file_name().to_string_lossy().ends_with(".rmeta") {
+                        let f = entry.file_name().clone().into_string().unwrap();
+                        if f.ends_with(".rmeta") {
+                            let prefix = &f[..f.len() - 5];
                             let _ = remove_file(entry.path());
+                            if let Ok(mut entries) = read_dir(directory) {
+                                while let Some(Ok(entry)) = entries.next() {
+                                    let f = entry.file_name().clone().into_string().unwrap();
+                                    if f.starts_with(prefix) && !f.ends_with(".rmeta") {
+                                        let _ = remove_file(entry.path());
+                                    }
+                                }
+                            }
                         }
                     }
                 }
