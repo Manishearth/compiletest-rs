@@ -148,6 +148,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         shuffle: false,
         #[cfg(feature = "rustc")]
         shuffle_seed: None,
+        #[cfg(feature = "rustc")]
+        fail_fast: false,
     }
 }
 
@@ -287,6 +289,16 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             test_type: test::TestType::IntegrationTest,
             #[cfg(feature = "rustc")]
             ignore_message: None,
+            #[cfg(feature = "rustc")]
+            source_file: "",
+            #[cfg(feature = "rustc")]
+            start_line: 0,
+            #[cfg(feature = "rustc")]
+            start_col: 0,
+            #[cfg(feature = "rustc")]
+            end_line: 0,
+            #[cfg(feature = "rustc")]
+            end_col: 0,
         },
         testfn: make_test_closure(config, testpaths),
     }
@@ -319,8 +331,10 @@ pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn
     let config = config.clone();
     let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
-        let config = config.clone(); // FIXME: why is this needed?
-        runtest::run(config, &testpaths)
+        let result = runtest::run(config, &testpaths);
+        #[cfg(feature = "rustc")]
+        let result = Ok(result);
+        result
     }))
 }
 
