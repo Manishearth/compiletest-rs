@@ -57,7 +57,7 @@ jobs:
       run: rustup component add rustc-dev
 
     - name: Run tests
-      run: cargo +nightly build --features rustc
+      run: cargo +nightly test --features rustc
 
     - name: Run test-project tests with `rustc` feature
       run: cd test-project && cargo +nightly test --features rustc

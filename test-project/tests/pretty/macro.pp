@@ -4,9 +4,9 @@
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-// pretty-compare-only
-// pretty-mode:expanded
-// pp-exact:macro.pp
+//@pretty-compare-only
+//@pretty-mode:expanded
+//@pp-exact:macro.pp
 
 macro_rules! square { ($x : expr) => { $x * $x } ; }
 

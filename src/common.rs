@@ -14,8 +14,6 @@ use std::fmt;
 use std::fs::{read_dir, remove_file};
 use std::str::FromStr;
 use std::path::PathBuf;
-#[cfg(feature = "rustc")]
-use rustc_session;
 
 use test::ColorConfig;
 use runtest::dylib_env_var;
