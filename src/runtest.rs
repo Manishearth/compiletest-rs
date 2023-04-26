@@ -1752,6 +1752,10 @@ actual:\n\
                 rustc.arg("--emit=asm");
             }
 
+            Some("bpf-linker") => {
+                rustc.arg("-Clink-args=--emit=asm");
+            }
+
             Some("ptx-linker") => {
                 // No extra flags needed.
             }
