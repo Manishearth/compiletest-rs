@@ -53,12 +53,11 @@ jobs:
         profile: minimal
         toolchain: nightly
         override: true
-    - name: Add rustc-dev component
-      run: rustup component add rustc-dev
+        components: rustc-dev, llvm-tools
 
     - name: Run tests
-      run: cargo +nightly test --features rustc
+      run: cargo test --features rustc
 
     - name: Run test-project tests with `rustc` feature
-      run: cd test-project && cargo +nightly test --features rustc
+      run: cd test-project && cargo test --features rustc
 
