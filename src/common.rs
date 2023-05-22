@@ -393,11 +393,11 @@ impl Default for Config {
             #[cfg(feature = "rustc")]
             target: platform.clone(),
             #[cfg(not(feature = "rustc"))]
-            target: env!("TARGET").to_string(),
+            target: env!("COMPILETEST_TARGET").to_string(),
             #[cfg(feature = "rustc")]
             host: platform.clone(),
             #[cfg(not(feature = "rustc"))]
-            host: env!("HOST").to_string(),
+            host: env!("COMPILETEST_HOST").to_string(),
             rustfix_coverage: false,
             gdb: None,
             gdb_version: None,
