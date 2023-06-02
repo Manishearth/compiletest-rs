@@ -286,8 +286,10 @@ impl Config {
         // Append to current flags if any are set, otherwise make new String
         let mut flags = self.target_rustcflags.take().unwrap_or_default();
         for p in env::split_paths(&lib_paths) {
+            let p = p.to_str().unwrap();
+            assert!(!p.contains(' '), "spaces in paths not supported: {}", p);
             flags += " -L ";
-            flags += p.to_str().unwrap();
+            flags += p;
         }
 
         self.target_rustcflags = Some(flags);
