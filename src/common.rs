@@ -281,18 +281,13 @@ impl Config {
 
         // Dependencies can be found in the environment variable. Throw everything there into the
         // link flags
-        let lib_paths = env::var(varname).unwrap_or_else(|err| match err {
-            env::VarError::NotPresent => String::new(),
-            err => panic!("can't get {} environment variable: {}", varname, err),
-        });
+        let lib_paths = env::var_os(varname).unwrap_or_default();
 
         // Append to current flags if any are set, otherwise make new String
-        let mut flags = self.target_rustcflags.take().unwrap_or_else(String::new);
-        if !lib_paths.is_empty() {
-            for p in env::split_paths(&lib_paths) {
-                flags += " -L ";
-                flags += p.to_str().unwrap(); // Can't fail. We already know this is unicode
-            }
+        let mut flags = self.target_rustcflags.take().unwrap_or_default();
+        for p in env::split_paths(&lib_paths) {
+            flags += " -L ";
+            flags += p.to_str().unwrap();
         }
 
         self.target_rustcflags = Some(flags);
