@@ -281,21 +281,32 @@ impl Config {
 
         // Dependencies can be found in the environment variable. Throw everything there into the
         // link flags
-        let lib_paths = env::var(varname).unwrap_or_else(|err| match err {
-            env::VarError::NotPresent => String::new(),
-            err => panic!("can't get {} environment variable: {}", varname, err),
-        });
+        let lib_paths = env::var_os(varname).unwrap_or_default();
 
         // Append to current flags if any are set, otherwise make new String
-        let mut flags = self.target_rustcflags.take().unwrap_or_else(String::new);
-        if !lib_paths.is_empty() {
-            for p in env::split_paths(&lib_paths) {
-                flags += " -L ";
-                flags += p.to_str().unwrap(); // Can't fail. We already know this is unicode
-            }
+        let mut flags = self.target_rustcflags.take().unwrap_or_default();
+        for p in env::split_paths(&lib_paths) {
+            let p = p.to_str().unwrap();
+            assert!(!p.contains(' '), "spaces in paths not supported: {}", p);
+            flags += " -L ";
+            flags += p;
         }
 
         self.target_rustcflags = Some(flags);
+    }
+
+    fn find_deps_with_extension(&self, ext: &'static str) -> impl Iterator<Item = PathBuf> + '_ {
+        self.target_rustcflags
+            .iter()
+            .flat_map(|flags| flags.split_whitespace().filter(|s| s.ends_with("/deps")))
+            .filter_map(|directory| read_dir(directory).ok())
+            .flat_map(move |entries| {
+                entries.filter_map(Result::ok).filter_map(move |entry| {
+                    let path = entry.path();
+                    let extension = path.extension()?;
+                    (extension == ext).then_some(path)
+                })
+            })
     }
 
     /// Remove rmeta files from target `deps` directory
@@ -304,20 +315,41 @@ impl Config {
     /// `cargo build` rlib files, causing E0464 for tests which use
     /// the parent crate.
     pub fn clean_rmeta(&self) {
-        if self.target_rustcflags.is_some() {
-            for directory in self.target_rustcflags
-                .as_ref()
-                .unwrap()
-                .split_whitespace()
-                .filter(|s| s.ends_with("/deps"))
-            {
-                if let Ok(mut entries) = read_dir(directory) {
-                    while let Some(Ok(entry)) = entries.next() {
-                        if entry.file_name().to_string_lossy().ends_with(".rmeta") {
-                            let _ = remove_file(entry.path());
+        self.find_deps_with_extension("rmeta").for_each(|path| {
+            let _: Result<(), _> = remove_file(path);
+        })
+    }
+
+    /// Remove "duplicate" rlib files from target `deps` directory
+    ///
+    /// These files are created by `cargo build`; running the tests with
+    /// multiple sets of features can produce multiple rlib files for
+    /// each crate, causing E0464 for tests which use the parent crate.
+    pub fn clean_rlib(&self) {
+        let mut rlibs = self.find_deps_with_extension("rlib").collect::<Vec<_>>();
+        let () = rlibs.sort();
+        let mut rlibs = rlibs.as_slice();
+        loop {
+            match rlibs {
+                [] => break,
+                [first, rest @ ..] => match rest {
+                    [] => break,
+                    [second, ..] => {
+                        fn stem(path: &PathBuf) -> &str {
+                            let stem = (|| {
+                                let file_name = path.file_name()?;
+                                let file_name = file_name.to_str()?;
+                                let (stem, _) = file_name.split_once('-')?;
+                                Some(stem)
+                            })();
+                            stem.unwrap_or_else(|| panic!("unable to parse {}", path.display()))
                         }
+                        if stem(first) == stem(second) {
+                            let _: Result<(), _> = remove_file(first);
+                        }
+                        rlibs = rest;
                     }
-                }
+                },
             }
         }
     }
