@@ -2879,7 +2879,8 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
                         return;
                     }
                     let tail = bytes.split_off(new_len - TAIL_LEN).into_boxed_slice();
-                    let head = replace(bytes, Vec::new());
+                    let mut head = replace(bytes, Vec::new());
+                    head.truncate(HEAD_LEN);
                     let skipped = new_len - HEAD_LEN - TAIL_LEN;
                     ProcOutput::Abbreviated { head, skipped, tail }
                 }
