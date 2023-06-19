@@ -93,7 +93,7 @@ Example
 -------
 See the `test-project` folder for a complete working example using the
 `compiletest-rs` utility. Simply `cd test-project` and `cargo test` to see the
-tests run. The annotation syntax is documented in the [rustc-guide][tests].
+tests run. The annotation syntax is documented in the [rustc-guide][annotations].
 
 TODO
 ----
@@ -117,5 +117,5 @@ If you are unsure, open a pull request anyway and we would be glad to help!
 
 [upstream]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 [src]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src
-[tests]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#header-commands-configuring-rustc
+[annotations]: https://rustc-dev-guide.rust-lang.org/tests/ui.html#error-annotations
 [tester]: https://crates.io/crates/tester
