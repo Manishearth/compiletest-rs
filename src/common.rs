@@ -12,6 +12,7 @@ pub use self::Mode::*;
 use std::env;
 use std::fmt;
 use std::fs::{read_dir, remove_file};
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -125,6 +126,9 @@ pub struct Config {
 
     /// The python executable to use for htmldocck
     pub docck_python: String,
+
+    /// A function to run before FileCheck.
+    pub llvm_filecheck_preprocess: Option<fn(&Path, &Path)>,
 
     /// The llvm FileCheck binary path
     pub llvm_filecheck: Option<PathBuf>,
@@ -409,6 +413,7 @@ impl Default for Config {
             docck_python: "docck-python".to_owned(),
             valgrind_path: None,
             force_valgrind: false,
+            llvm_filecheck_preprocess: None,
             llvm_filecheck: None,
             src_base: PathBuf::from("tests/run-pass"),
             build_base: env::temp_dir(),

@@ -1883,13 +1883,23 @@ actual:\n\
         (self.compose_and_run_compiler(rustc, None), output_path)
     }
 
-    fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
+    fn verify_with_filecheck(&self, output: PathBuf) {
+        let output = if let Some(preprocess) = self.config.llvm_filecheck_preprocess {
+            let preprocessed = output.with_extension("preprocessed");
+            preprocess(&output, &preprocessed);
+            preprocessed
+        } else {
+            output
+        };
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck
             .arg("--input-file")
             .arg(output)
             .arg(&self.testpaths.file);
-        self.compose_and_run(filecheck, "", None, None)
+        let proc_res = self.compose_and_run(filecheck, "", None, None);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+        }
     }
 
     fn run_codegen_test(&self) {
@@ -1905,10 +1915,7 @@ actual:\n\
         }
 
         let output_path = self.output_base_name().with_extension("ll");
-        let proc_res = self.verify_with_filecheck(&output_path);
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
-        }
+        self.verify_with_filecheck(output_path)
     }
 
     fn run_assembly_test(&self) {
@@ -1921,10 +1928,7 @@ actual:\n\
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        let proc_res = self.verify_with_filecheck(&output_path);
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
-        }
+        self.verify_with_filecheck(output_path)
     }
 
     fn charset() -> &'static str {
