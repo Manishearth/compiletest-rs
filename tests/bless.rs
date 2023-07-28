@@ -3,8 +3,8 @@
 extern crate compiletest_rs as compiletest;
 
 mod test_support;
-use test_support::{testsuite, TestsuiteBuilder, GLOBAL_ROOT};
 use compiletest::Config;
+use test_support::{testsuite, TestsuiteBuilder, GLOBAL_ROOT};
 
 fn setup(mode: &str) -> (Config, TestsuiteBuilder) {
     let builder = testsuite(mode);
@@ -23,18 +23,20 @@ fn test_bless_new_file() {
     config.bless = true;
 
     builder.mk_file(
-              "foobar.rs",
-              r#"
+        "foobar.rs",
+        r#"
                   #[warn(unused_variables)]
                   fn main() {
                       let abc = "foobar";
                   }
               "#,
-          );
+    );
     compiletest::run_tests(&config);
 
     // Blessing should cause the stderr to be created directly
-    assert!(builder.file_contents("foobar.stderr").contains("unused variable"));
+    assert!(builder
+        .file_contents("foobar.stderr")
+        .contains("unused variable"));
 
     // And a second run of the tests, with blessing disabled should work just fine
     config.bless = false;
@@ -76,8 +78,12 @@ fn test_bless_update_file() {
     compiletest::run_tests(&config);
 
     // Blessing should cause the stderr to be created directly
-    assert!(builder.file_contents("foobar2.stderr").contains("unused variable"));
-    assert!(builder.file_contents("foobar2.stderr").contains("foobar_update"));
+    assert!(builder
+        .file_contents("foobar2.stderr")
+        .contains("unused variable"));
+    assert!(builder
+        .file_contents("foobar2.stderr")
+        .contains("foobar_update"));
 
     // And a second run of the tests, with blessing disabled should work just fine
     config.bless = false;

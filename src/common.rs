@@ -12,11 +12,11 @@ pub use self::Mode::*;
 use std::env;
 use std::fmt;
 use std::fs::{read_dir, remove_file};
-use std::str::FromStr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use test::ColorConfig;
 use runtest::dylib_env_var;
+use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -79,25 +79,27 @@ impl FromStr for Mode {
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-                              CompileFail => "compile-fail",
-                              ParseFail => "parse-fail",
-                              RunFail => "run-fail",
-                              RunPass => "run-pass",
-                              RunPassValgrind => "run-pass-valgrind",
-                              Pretty => "pretty",
-                              DebugInfoGdb => "debuginfo-gdb",
-                              DebugInfoLldb => "debuginfo-lldb",
-                              Codegen => "codegen",
-                              Rustdoc => "rustdoc",
-                              CodegenUnits => "codegen-units",
-                              Incremental => "incremental",
-                              RunMake => "run-make",
-                              Ui => "ui",
-                              MirOpt => "mir-opt",
-                              Assembly => "assembly",
-                          },
-                          f)
+        fmt::Display::fmt(
+            match *self {
+                CompileFail => "compile-fail",
+                ParseFail => "parse-fail",
+                RunFail => "run-fail",
+                RunPass => "run-pass",
+                RunPassValgrind => "run-pass-valgrind",
+                Pretty => "pretty",
+                DebugInfoGdb => "debuginfo-gdb",
+                DebugInfoLldb => "debuginfo-lldb",
+                Codegen => "codegen",
+                Rustdoc => "rustdoc",
+                CodegenUnits => "codegen-units",
+                Incremental => "incremental",
+                RunMake => "run-make",
+                Ui => "ui",
+                MirOpt => "mir-opt",
+                Assembly => "assembly",
+            },
+            f,
+        )
     }
 }
 
@@ -252,11 +254,7 @@ pub struct TestPaths {
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-    kind: &str,
-) -> PathBuf {
+pub fn expected_output_path(testpaths: &TestPaths, revision: Option<&str>, kind: &str) -> PathBuf {
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
@@ -356,7 +354,9 @@ impl Config {
 
     #[cfg(feature = "tmp")]
     pub fn tempdir(mut self) -> ConfigWithTemp {
-        let tmp = tempfile::Builder::new().prefix("compiletest").tempdir()
+        let tmp = tempfile::Builder::new()
+            .prefix("compiletest")
+            .tempdir()
             .expect("failed to create temporary directory");
         self.build_base = tmp.path().to_owned();
         config_tempdir::ConfigWithTemp {
@@ -368,8 +368,8 @@ impl Config {
 
 #[cfg(feature = "tmp")]
 mod config_tempdir {
-    use tempfile;
     use std::ops;
+    use tempfile;
 
     pub struct ConfigWithTemp {
         pub config: super::Config,
@@ -393,7 +393,6 @@ mod config_tempdir {
 
 #[cfg(feature = "tmp")]
 pub use self::config_tempdir::ConfigWithTemp;
-
 
 impl Default for Config {
     fn default() -> Config {

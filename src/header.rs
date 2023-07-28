@@ -10,12 +10,12 @@
 
 use std::env;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use common::Config;
 use common;
+use common::Config;
 use util;
 
 use extract_gdb_version;
@@ -36,13 +36,8 @@ impl EarlyProps {
             aux: Vec::new(),
         };
 
-        iter_header(testfile,
-                    None,
-                    config,
-                    &mut |ln| {
-            props.ignore =
-                props.ignore ||
-                config.parse_cfg_name_directive(ln, "ignore");
+        iter_header(testfile, None, config, &mut |ln| {
+            props.ignore = props.ignore || config.parse_cfg_name_directive(ln, "ignore");
 
             if config.has_cfg_prefix(ln, "only") {
                 props.ignore = match config.parse_cfg_name_directive(ln, "only") {
@@ -51,11 +46,10 @@ impl EarlyProps {
                 };
             }
 
-            props.ignore =
-                props.ignore ||
-                ignore_gdb(config, ln) ||
-                ignore_lldb(config, ln) ||
-                ignore_llvm(config, ln);
+            props.ignore = props.ignore
+                || ignore_gdb(config, ln)
+                || ignore_lldb(config, ln)
+                || ignore_llvm(config, ln);
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
@@ -105,12 +99,13 @@ impl EarlyProps {
         fn extract_gdb_version_range(line: &str) -> (u32, u32) {
             const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
 
-            let range_components = line.split(&[' ', '-'][..])
-                                       .filter(|word| !word.is_empty())
-                                       .map(extract_gdb_version)
-                                       .skip_while(Option::is_none)
-                                       .take(3) // 3 or more = invalid, so take at most 3.
-                                       .collect::<Vec<Option<u32>>>();
+            let range_components = line
+                .split(&[' ', '-'][..])
+                .filter(|word| !word.is_empty())
+                .map(extract_gdb_version)
+                .skip_while(Option::is_none)
+                .take(3) // 3 or more = invalid, so take at most 3.
+                .collect::<Vec<Option<u32>>>();
 
             match range_components.len() {
                 1 => {
@@ -133,7 +128,8 @@ impl EarlyProps {
 
             if let Some(ref actual_version) = config.lldb_version {
                 if line.starts_with("min-lldb-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed lldb version directive");
@@ -150,11 +146,12 @@ impl EarlyProps {
 
         fn ignore_llvm(config: &Config, line: &str) -> bool {
             if config.system_llvm && line.starts_with("no-system-llvm") {
-                    return true;
+                return true;
             }
             if let Some(ref actual_version) = config.llvm_version {
                 if line.starts_with("min-llvm-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -162,7 +159,8 @@ impl EarlyProps {
                     // version
                     &actual_version[..] < min_version
                 } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line.trim_end()
+                    let min_version = line
+                        .trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -270,11 +268,7 @@ impl TestProps {
         }
     }
 
-    pub fn from_aux_file(&self,
-                         testfile: &Path,
-                         cfg: Option<&str>,
-                         config: &Config)
-                         -> Self {
+    pub fn from_aux_file(&self, testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
 
         // copy over select properties to the aux build:
@@ -294,22 +288,16 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    fn load_from(&mut self,
-                 testfile: &Path,
-                 cfg: Option<&str>,
-                 config: &Config) {
+    fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
         let mut has_edition = false;
-        iter_header(testfile,
-                    cfg,
-                    config,
-                    &mut |ln| {
+        iter_header(testfile, cfg, config, &mut |ln| {
             if let Some(ep) = config.parse_error_pattern(ln) {
                 self.error_patterns.push(ep);
             }
 
             if let Some(flags) = config.parse_compile_flags(ln) {
-                self.compile_flags.extend(flags.split_whitespace()
-                    .map(|s| s.to_owned()));
+                self.compile_flags
+                    .extend(flags.split_whitespace().map(|s| s.to_owned()));
             }
 
             if let Some(edition) = config.parse_edition(ln) {
@@ -424,10 +412,7 @@ impl TestProps {
     }
 }
 
-const HEADER_PREFIXES: [[&str; 2]; 2] = [
-    ["//", "//["],
-    ["//@", "//@["],
-];
+const HEADER_PREFIXES: [[&str; 2]; 2] = [["//", "//["], ["//@", "//@["]];
 
 fn iter_header(testfile: &Path, cfg: Option<&str>, config: &Config, it: &mut dyn FnMut(&str)) {
     if testfile.is_dir() {
@@ -541,9 +526,7 @@ impl Config {
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {
         self.parse_name_value_directive(line, name).map(|nv| {
             // nv is either FOO or FOO=BAR
-            let mut strs: Vec<String> = nv.splitn(2, '=')
-                .map(str::to_owned)
-                .collect();
+            let mut strs: Vec<String> = nv.splitn(2, '=').map(str::to_owned).collect();
 
             match strs.len() {
                 1 => (strs.pop().unwrap(), "".to_owned()),
@@ -586,7 +569,10 @@ impl Config {
     /// or `normalize-stderr-32bit`. Returns `true` if the line matches it.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> bool {
         if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
-            let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
+            let name = line[prefix.len() + 1..]
+                .split(&[':', ' '][..])
+                .next()
+                .unwrap();
 
             name == "test" ||
                 util::matches_os(&self.target, name) ||             // target
@@ -617,16 +603,17 @@ impl Config {
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
-        line.starts_with(directive) && match line.as_bytes().get(directive.len()) {
-            None | Some(&b' ') | Some(&b':') => true,
-            _ => false
-        }
+        line.starts_with(directive)
+            && match line.as_bytes().get(directive.len()) {
+                None | Some(&b' ') | Some(&b':') => true,
+                _ => false,
+            }
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
         let colon = directive.len();
         if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
-            let value = line[(colon + 1) ..].to_owned();
+            let value = line[(colon + 1)..].to_owned();
             debug!("{}: {}", directive, value);
             Some(expand_variables(value, self))
         } else {
@@ -661,8 +648,10 @@ impl Config {
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {
-    let error_string = format!("Encountered LLDB version string with unexpected format: {}",
-                               version_string);
+    let error_string = format!(
+        "Encountered LLDB version string with unexpected format: {}",
+        version_string
+    );
     version_string.parse().expect(&error_string)
 }
 
@@ -709,6 +698,6 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
         None => return None,
     };
     let result = line[begin..end].to_owned();
-    *line = &line[end+1..];
+    *line = &line[end + 1..];
     Some(result)
 }

@@ -2,12 +2,11 @@
 //!
 //! Inspired by cargo's `cargo-test-support` crate:
 //! https://github.com/rust-lang/cargo/tree/master/crates/cargo-test-support
+use std::cell::RefCell;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
-
 
 static COMPILETEST_INTEGRATION_TEST_DIR: &str = "cit";
 
@@ -44,14 +43,13 @@ impl TestsuiteBuilder {
 
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         TEST_ID.with(|n| *n.borrow_mut() = Some(id));
-        let root = GLOBAL_ROOT.join(format!("id{}", TEST_ID.with(|n|n.borrow().unwrap()))).join(mode);
+        let root = GLOBAL_ROOT
+            .join(format!("id{}", TEST_ID.with(|n| n.borrow().unwrap())))
+            .join(mode);
         root.mkdir_p();
 
-        Self {
-            root,
-        }
+        Self { root }
     }
-
 
     /// Creates a new file to be used for the integration test
     pub fn mk_file(&self, path: &str, body: &str) {
