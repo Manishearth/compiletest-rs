@@ -15,19 +15,17 @@ pub fn diff_lines(actual: &str, expected: &str) -> Vec<String> {
     // mega simplistic diff algorithm that just prints the things added/removed
     zip_all(actual.lines(), expected.lines())
         .enumerate()
-        .filter_map(|(i, (a, e))| {
-            match (a, e) {
-                (Some(a), Some(e)) => {
-                    if lines_match(e, a) {
-                        None
-                    } else {
-                        Some(format!("{:3} - |{}|\n    + |{}|\n", i, e, a))
-                    }
+        .filter_map(|(i, (a, e))| match (a, e) {
+            (Some(a), Some(e)) => {
+                if lines_match(e, a) {
+                    None
+                } else {
+                    Some(format!("{:3} - |{}|\n    + |{}|\n", i, e, a))
                 }
-                (Some(a), None) => Some(format!("{:3} -\n    + |{}|\n", i, a)),
-                (None, Some(e)) => Some(format!("{:3} - |{}|\n    +\n", i, e)),
-                (None, None) => panic!("Cannot get here"),
             }
+            (Some(a), None) => Some(format!("{:3} -\n    + |{}|\n", i, a)),
+            (None, Some(e)) => Some(format!("{:3} - |{}|\n    +\n", i, e)),
+            (None, None) => panic!("Cannot get here"),
         })
         .collect()
 }

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use errors::{Error, ErrorKind};
-use serde_json;
-use std::str::FromStr;
-use std::path::Path;
 use runtest::ProcRes;
+use serde_json;
+use std::path::Path;
+use std::str::FromStr;
 
 // These structs are a subset of the ones found in
 // `syntax::json`.
@@ -94,7 +94,8 @@ pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    output.lines()
+    output
+        .lines()
         .flat_map(|line| parse_line(file_name, line, output, proc_res))
         .collect()
 }
@@ -110,11 +111,11 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 expected_errors
             }
             Err(error) => {
-                proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
+                proc_res.fatal(Some(&format!(
+                    "failed to decode compiler output as json: \
                                               `{}`\noutput: {}\nline: {}",
-                                             error,
-                                             line,
-                                             output)));
+                    error, line, output
+                )));
             }
         }
     } else {
@@ -122,10 +123,12 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
     }
 }
 
-fn push_expected_errors(expected_errors: &mut Vec<Error>,
-                        diagnostic: &Diagnostic,
-                        default_spans: &[&DiagnosticSpan],
-                        file_name: &str) {
+fn push_expected_errors(
+    expected_errors: &mut Vec<Error>,
+    diagnostic: &Diagnostic,
+    default_spans: &[&DiagnosticSpan],
+    file_name: &str,
+) {
     // In case of macro expansions, we need to get the span of the callsite
     let spans_info_in_this_file: Vec<_> = diagnostic
         .spans
@@ -134,11 +137,13 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
         .filter(|(_, span)| Path::new(&span.file_name) == Path::new(&file_name))
         .collect();
 
-    let spans_in_this_file: Vec<_> = spans_info_in_this_file.iter()
+    let spans_in_this_file: Vec<_> = spans_info_in_this_file
+        .iter()
         .map(|(_, span)| span)
         .collect();
 
-    let primary_spans: Vec<_> = spans_info_in_this_file.iter()
+    let primary_spans: Vec<_> = spans_info_in_this_file
+        .iter()
         .filter(|(is_primary, _)| *is_primary)
         .map(|(_, span)| span)
         .take(1) // sometimes we have more than one showing up in the json; pick first
@@ -162,24 +167,33 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     let with_code = |span: &DiagnosticSpan, text: &str| {
         match diagnostic.code {
             Some(ref code) =>
-                // FIXME(#33000) -- it'd be better to use a dedicated
-                // UI harness than to include the line/col number like
-                // this, but some current tests rely on it.
-                //
-                // Note: Do NOT include the filename. These can easily
-                // cause false matches where the expected message
-                // appears in the filename, and hence the message
-                // changes but the test still passes.
-                format!("{}:{}: {}:{}: {} [{}]",
-                        span.line_start, span.column_start,
-                        span.line_end, span.column_end,
-                        text, code.code.clone()),
+            // FIXME(#33000) -- it'd be better to use a dedicated
+            // UI harness than to include the line/col number like
+            // this, but some current tests rely on it.
+            //
+            // Note: Do NOT include the filename. These can easily
+            // cause false matches where the expected message
+            // appears in the filename, and hence the message
+            // changes but the test still passes.
+            {
+                format!(
+                    "{}:{}: {}:{}: {} [{}]",
+                    span.line_start,
+                    span.column_start,
+                    span.line_end,
+                    span.column_end,
+                    text,
+                    code.code.clone()
+                )
+            }
             None =>
-                // FIXME(#33000) -- it'd be better to use a dedicated UI harness
-                format!("{}:{}: {}:{}: {}",
-                        span.line_start, span.column_start,
-                        span.line_end, span.column_end,
-                        text),
+            // FIXME(#33000) -- it'd be better to use a dedicated UI harness
+            {
+                format!(
+                    "{}:{}: {}:{}: {}",
+                    span.line_start, span.column_start, span.line_end, span.column_end, text
+                )
+            }
         }
     };
 
@@ -229,8 +243,10 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 
     // Add notes for any labels that appear in the message.
-    for span in spans_in_this_file.iter()
-        .filter(|span| span.label.is_some()) {
+    for span in spans_in_this_file
+        .iter()
+        .filter(|span| span.label.is_some())
+    {
         expected_errors.push(Error {
             line_num: span.line_start,
             kind: Some(ErrorKind::Note),
@@ -244,9 +260,11 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 }
 
-fn push_backtrace(expected_errors: &mut Vec<Error>,
-                  expansion: &DiagnosticSpanMacroExpansion,
-                  file_name: &str) {
+fn push_backtrace(
+    expected_errors: &mut Vec<Error>,
+    expansion: &DiagnosticSpanMacroExpansion,
+    file_name: &str,
+) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         expected_errors.push(Error {
             line_num: expansion.span.line_start,
