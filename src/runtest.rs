@@ -1891,10 +1891,18 @@ actual:\n\
         } else {
             output
         };
+        let prefixes = if let Some(rev) = self.revision {
+            format!("CHECK,{}", rev)
+        } else {
+            "CHECK".to_string()
+        };
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck
             .arg("--input-file")
             .arg(output)
+            .arg("--allow-unused-prefixes")
+            .arg("--check-prefixes")
+            .arg(&prefixes)
             .arg(&self.testpaths.file);
         let proc_res = self.compose_and_run(filecheck, "", None, None);
         if !proc_res.status.success() {
