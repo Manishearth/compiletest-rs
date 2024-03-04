@@ -14,7 +14,6 @@ use common::{Assembly, Incremental, MirOpt, RunMake, Ui};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Config, TestPaths};
-use diff;
 use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
 use header::TestProps;
