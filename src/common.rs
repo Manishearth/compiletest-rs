@@ -373,7 +373,6 @@ impl Config {
 #[cfg(feature = "tmp")]
 mod config_tempdir {
     use std::ops;
-    use tempfile;
 
     pub struct ConfigWithTemp {
         pub config: super::Config,
