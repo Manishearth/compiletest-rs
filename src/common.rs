@@ -10,6 +10,7 @@
 pub use self::Mode::*;
 
 use std::env;
+use std::ffi::OsStr;
 use std::fmt;
 use std::fs::{read_dir, remove_file};
 use std::path::Path;
@@ -276,6 +277,25 @@ pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
 
+/// Returns additional link flags for the given `lib_paths`.
+fn lib_paths_flags<T>(lib_paths: T) -> String
+where
+    T: AsRef<OsStr>,
+{
+    let mut flags = String::new();
+
+    if !lib_paths.as_ref().is_empty() {
+        for p in env::split_paths(lib_paths.as_ref()) {
+            let p = p.to_str().unwrap();
+            assert!(!p.contains(' '), "spaces in paths not supported: {}", p);
+            flags += " -L ";
+            flags += p;
+        }
+    }
+
+    flags
+}
+
 impl Config {
     /// Add rustc flags to link with the crate's dependencies in addition to the crate itself
     pub fn link_deps(&mut self) {
@@ -287,12 +307,7 @@ impl Config {
 
         // Append to current flags if any are set, otherwise make new String
         let mut flags = self.target_rustcflags.take().unwrap_or_default();
-        for p in env::split_paths(&lib_paths) {
-            let p = p.to_str().unwrap();
-            assert!(!p.contains(' '), "spaces in paths not supported: {}", p);
-            flags += " -L ";
-            flags += p;
-        }
+        flags += lib_paths_flags(&lib_paths).as_str();
 
         self.target_rustcflags = Some(flags);
     }
@@ -460,5 +475,29 @@ impl Default for Config {
             edition: None,
             strict_headers: false,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn test_lib_paths_flags() {
+        assert_eq!(lib_paths_flags(""), "");
+        assert_eq!(lib_paths_flags("/lib"), " -L /lib");
+        assert_eq!(lib_paths_flags("/lib:/usr/lib"), " -L /lib -L /usr/lib");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_lib_paths_flags() {
+        assert_eq!(lib_paths_flags(""), "");
+        assert_eq!(lib_paths_flags("C:\\lib"), " -L C:\\lib");
+        assert_eq!(
+            lib_paths_flags("C:\\lib;C:\\usr\\lib"),
+            " -L C:\\lib -L C:\\usr\\lib"
+        );
     }
 }
