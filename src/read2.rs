@@ -106,7 +106,7 @@ mod imp {
 #[cfg(windows)]
 mod imp {
     extern crate miow;
-    extern crate winapi;
+    extern crate windows_sys;
 
     use std::io;
     use std::os::windows::prelude::*;
@@ -116,7 +116,8 @@ mod imp {
     use self::miow::iocp::{CompletionPort, CompletionStatus};
     use self::miow::pipe::NamedPipe;
     use self::miow::Overlapped;
-    use self::winapi::shared::winerror::ERROR_BROKEN_PIPE;
+
+    use self::windows_sys::Win32::Foundation::ERROR_BROKEN_PIPE;
 
     struct Pipe<'a> {
         dst: &'a mut Vec<u8>,
