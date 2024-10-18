@@ -1940,9 +1940,7 @@ actual:\n\
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "bitrig") {
-            "auto"
-        } else if cfg!(target_os = "freebsd") {
+        if cfg!(target_os = "freebsd") {
             "ISO-8859-1"
         } else {
             "UTF-8"
@@ -3142,8 +3140,8 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
     read2(
         child.stdout.take().unwrap(),
         child.stderr.take().unwrap(),
-        &mut |is_stdout, data, _| {
-            if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+        &mut |is_stdout, data: &mut Vec<u8>, _| {
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(&data);
             data.clear();
         },
     )?;
