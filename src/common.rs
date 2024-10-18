@@ -17,8 +17,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use runtest::dylib_env_var;
-use test::ColorConfig;
+use crate::runtest::dylib_env_var;
+use crate::test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {

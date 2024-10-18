@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{Assembly, Incremental, MirOpt, RunMake, Ui};
+use crate::common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use crate::common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{Config, TestPaths};
+use crate::errors::{self, Error, ErrorKind};
+use crate::header::TestProps;
+use crate::json;
 use crate::util::{logv, PathBufExt};
-use common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
-use common::{Assembly, Incremental, MirOpt, RunMake, Ui};
-use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Config, TestPaths};
-use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
-use header::TestProps;
-use json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
@@ -34,7 +34,7 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 use std::sync::{Arc, Mutex, RwLock};
 
-use extract_gdb_version;
+use crate::extract_gdb_version;
 
 fn get_or_create_coverage_file(path: &Path, create: impl FnOnce() -> File) -> Arc<Mutex<File>> {
     lazy_static::lazy_static! {
@@ -115,7 +115,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
 
     base_cx.complete_all();
 
-    File::create(::stamp(&config, testpaths)).unwrap();
+    File::create(crate::stamp(&config, testpaths)).unwrap();
 }
 
 struct TestCx<'test> {
@@ -1707,7 +1707,7 @@ actual:\n\
     }
 
     fn make_cmdline(&self, command: &Command, libpath: &str) -> String {
-        use util;
+        use crate::util;
 
         // Linux and mac don't require adjusting the library search path
         if cfg!(unix) {
@@ -1940,9 +1940,7 @@ actual:\n\
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "bitrig") {
-            "auto"
-        } else if cfg!(target_os = "freebsd") {
+        if cfg!(target_os = "freebsd") {
             "ISO-8859-1"
         } else {
             "UTF-8"
@@ -3067,7 +3065,7 @@ fn nocomment_mir_line(line: &str) -> &str {
 }
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
-    use read2::read2;
+    use crate::read2::read2;
     use std::mem::replace;
 
     const HEAD_LEN: usize = 160 * 1024;
@@ -3142,8 +3140,8 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
     read2(
         child.stdout.take().unwrap(),
         child.stderr.take().unwrap(),
-        &mut |is_stdout, data, _| {
-            if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+        &mut |is_stdout, data: &mut Vec<u8>, _| {
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(&data);
             data.clear();
         },
     )?;
