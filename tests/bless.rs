@@ -3,8 +3,8 @@
 extern crate compiletest_rs as compiletest;
 
 mod test_support;
-use compiletest::Config;
-use test_support::{testsuite, TestsuiteBuilder, GLOBAL_ROOT};
+use crate::compiletest::Config;
+use crate::test_support::{testsuite, TestsuiteBuilder, GLOBAL_ROOT};
 
 fn setup(mode: &str) -> (Config, TestsuiteBuilder) {
     let builder = testsuite(mode);

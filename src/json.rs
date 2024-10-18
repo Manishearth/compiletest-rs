@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use errors::{Error, ErrorKind};
-use runtest::ProcRes;
+use crate::errors::{Error, ErrorKind};
+use crate::runtest::ProcRes;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -236,7 +236,7 @@ fn push_expected_errors(
 
     // Add notes for the backtrace
     for span in primary_spans {
-        for frame in &span.expansion {
+        if let Some(frame) = &span.expansion {
             push_backtrace(expected_errors, frame, file_name);
         }
     }
@@ -272,7 +272,7 @@ fn push_backtrace(
         });
     }
 
-    for previous_expansion in &expansion.span.expansion {
+    if let Some(previous_expansion) = &expansion.span.expansion {
         push_backtrace(expected_errors, previous_expansion, file_name);
     }
 }

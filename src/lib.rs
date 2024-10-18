@@ -38,8 +38,8 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate rustfix;
 
-use common::{DebugInfoGdb, DebugInfoLldb, Pretty};
-use common::{Mode, TestPaths};
+use crate::common::{DebugInfoGdb, DebugInfoLldb, Pretty};
+use crate::common::{Mode, TestPaths};
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -57,7 +57,7 @@ pub mod runtest;
 pub mod uidiff;
 pub mod util;
 
-pub use common::Config;
+pub use crate::common::Config;
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {

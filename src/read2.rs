@@ -21,7 +21,7 @@ mod imp {
     pub fn read2(
         out_pipe: ChildStdout,
         err_pipe: ChildStderr,
-        data: &mut FnMut(bool, &mut Vec<u8>, bool),
+        data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
     ) -> io::Result<()> {
         let mut buffer = Vec::new();
         out_pipe.read_to_end(&mut buffer)?;

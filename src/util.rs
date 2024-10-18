@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::Config;
+use crate::common::Config;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
