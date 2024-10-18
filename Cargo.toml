@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0" # Same as rustc
 repository = "https://github.com/Manishearth/compiletest-rs"
 keywords = ["compiletest", "test", "plugin"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "compiletest_rs"
