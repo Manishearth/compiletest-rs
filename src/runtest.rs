@@ -229,9 +229,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_correct_failure_status(&self, proc_res: &ProcRes) {
-        // The value the rust runtime returns on failure
-        const RUST_ERR: i32 = 1;
-        if proc_res.status.code() != Some(RUST_ERR) {
+        // The value the rust runtime returns on normal compile failure
+        const DEFAULT_RUST_ERR: i32 = 1;
+
+        let expected = self.config.compile_test_exit_code.unwrap_or(DEFAULT_RUST_ERR);
+
+        if proc_res.status.code() != Some(expected) {
             self.fatal_proc_rec(
                 &format!("failure produced the wrong error: {}", proc_res.status),
                 proc_res,
