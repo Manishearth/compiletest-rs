@@ -239,6 +239,9 @@ pub struct Config {
     /// as a header.
     pub strict_headers: bool,
 
+    /// Expected exit code for compile tests. Defaults to expecting `1` if unset.
+    pub compile_test_exit_code: Option<i32>,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -464,6 +467,7 @@ impl Default for Config {
             quiet: false,
             color: ColorConfig::AutoColor,
             remote_test_client: None,
+            compile_test_exit_code: None,
             cc: "cc".to_string(),
             cxx: "cxx".to_string(),
             cflags: "cflags".to_string(),
