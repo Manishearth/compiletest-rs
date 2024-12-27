@@ -4,7 +4,7 @@ extern crate compiletest_rs as compiletest;
 
 mod test_support;
 use crate::compiletest::Config;
-use crate::test_support::{testsuite, TestsuiteBuilder, GLOBAL_ROOT};
+use crate::test_support::{global_root, testsuite, TestsuiteBuilder};
 
 fn setup(mode: &str) -> (Config, TestsuiteBuilder) {
     let builder = testsuite(mode);
@@ -12,7 +12,7 @@ fn setup(mode: &str) -> (Config, TestsuiteBuilder) {
     let cfg_mode = mode.parse().expect("Invalid mode");
     config.mode = cfg_mode;
     config.src_base = builder.root.clone();
-    config.build_base = GLOBAL_ROOT.join("build_base");
+    config.build_base = global_root().join("build_base");
 
     (config, builder)
 }

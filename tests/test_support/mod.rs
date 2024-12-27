@@ -2,12 +2,15 @@
 //!
 //! Inspired by cargo's `cargo-test-support` crate:
 //! https://github.com/rust-lang/cargo/tree/master/crates/cargo-test-support
-use once_cell::sync::Lazy;
+
 use std::cell::RefCell;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    OnceLock,
+};
 
 static COMPILETEST_INTEGRATION_TEST_DIR: &str = "cit";
 
@@ -15,16 +18,19 @@ thread_local! {
     static TEST_ID: RefCell<Option<usize>> = RefCell::new(None);
 }
 
-pub static GLOBAL_ROOT: Lazy<PathBuf> = Lazy::new(|| {
-    let mut path = env::current_exe().unwrap();
-    path.pop(); // chop off exe name
-    path.pop(); // chop off 'deps' part
-    path.pop(); // chop off 'debug'
+pub fn global_root() -> &'static Path {
+    static GLOBAL_ROOT: OnceLock<PathBuf> = OnceLock::new();
+    GLOBAL_ROOT.get_or_init(|| {
+        let mut path = env::current_exe().unwrap();
+        path.pop(); // chop off exe name
+        path.pop(); // chop off 'deps' part
+        path.pop(); // chop off 'debug'
 
-    path.push(COMPILETEST_INTEGRATION_TEST_DIR);
-    path.mkdir_p();
-    path
-});
+        path.push(COMPILETEST_INTEGRATION_TEST_DIR);
+        path.mkdir_p();
+        path
+    })
+}
 
 pub fn testsuite(mode: &str) -> TestsuiteBuilder {
     let builder = TestsuiteBuilder::new(mode);
@@ -42,7 +48,7 @@ impl TestsuiteBuilder {
 
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         TEST_ID.with(|n| *n.borrow_mut() = Some(id));
-        let root = GLOBAL_ROOT
+        let root = global_root()
             .join(format!("id{}", TEST_ID.with(|n| n.borrow().unwrap())))
             .join(mode);
         root.mkdir_p();
