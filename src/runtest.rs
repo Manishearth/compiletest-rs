@@ -21,7 +21,6 @@ use filetime::FileTime;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
@@ -33,20 +32,21 @@ use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
 use crate::extract_gdb_version;
 
 fn get_or_create_coverage_file(path: &Path, create: impl FnOnce() -> File) -> Arc<Mutex<File>> {
-    static COVERAGE_FILE_LOCKS: Lazy<RwLock<HashMap<PathBuf, Arc<Mutex<File>>>>> =
-        Lazy::new(Default::default);
+    static COVERAGE_FILE_LOCKS: OnceLock<RwLock<HashMap<PathBuf, Arc<Mutex<File>>>>> =
+        OnceLock::new();
 
+    let locks = COVERAGE_FILE_LOCKS.get_or_init(Default::default);
     {
-        let locks = COVERAGE_FILE_LOCKS.read().unwrap();
+        let locks = locks.read().unwrap();
         locks.get(path).map(Arc::clone)
     }
     .unwrap_or_else(|| {
-        let mut locks = COVERAGE_FILE_LOCKS.write().unwrap();
+        let mut locks = locks.write().unwrap();
         locks
             .entry(path.to_path_buf())
             .or_insert_with(|| Arc::new(Mutex::new(create())))
