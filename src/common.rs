@@ -415,10 +415,18 @@ mod config_tempdir {
 #[cfg(feature = "tmp")]
 pub use self::config_tempdir::ConfigWithTemp;
 
+#[cfg(feature = "rustc")]
+#[rustversion::since(2024-11-03)]
+use rustc_session::config::host_tuple as host;
+
+#[cfg(feature = "rustc")]
+#[rustversion::before(2024-11-03)]
+use rustc_session::config::host_triple as host;
+
 impl Default for Config {
     fn default() -> Config {
         #[cfg(feature = "rustc")]
-        let platform = rustc_session::config::host_triple().to_string();
+        let platform = host().to_string();
 
         Config {
             bless: false,
