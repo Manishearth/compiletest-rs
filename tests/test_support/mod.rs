@@ -2,6 +2,7 @@
 //!
 //! Inspired by cargo's `cargo-test-support` crate:
 //! https://github.com/rust-lang/cargo/tree/master/crates/cargo-test-support
+use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::env;
 use std::fs;
@@ -14,18 +15,16 @@ thread_local! {
     static TEST_ID: RefCell<Option<usize>> = RefCell::new(None);
 }
 
-lazy_static::lazy_static! {
-    pub static ref GLOBAL_ROOT: PathBuf = {
-        let mut path = env::current_exe().unwrap();
-        path.pop(); // chop off exe name
-        path.pop(); // chop off 'deps' part
-        path.pop(); // chop off 'debug'
+pub static GLOBAL_ROOT: Lazy<PathBuf> = Lazy::new(|| {
+    let mut path = env::current_exe().unwrap();
+    path.pop(); // chop off exe name
+    path.pop(); // chop off 'deps' part
+    path.pop(); // chop off 'debug'
 
-        path.push(COMPILETEST_INTEGRATION_TEST_DIR);
-        path.mkdir_p();
-        path
-    };
-}
+    path.push(COMPILETEST_INTEGRATION_TEST_DIR);
+    path.mkdir_p();
+    path
+});
 
 pub fn testsuite(mode: &str) -> TestsuiteBuilder {
     let builder = TestsuiteBuilder::new(mode);

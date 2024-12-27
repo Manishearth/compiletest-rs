@@ -21,6 +21,7 @@ use filetime::FileTime;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
@@ -37,9 +38,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use crate::extract_gdb_version;
 
 fn get_or_create_coverage_file(path: &Path, create: impl FnOnce() -> File) -> Arc<Mutex<File>> {
-    lazy_static::lazy_static! {
-        static ref COVERAGE_FILE_LOCKS: RwLock<HashMap<PathBuf, Arc<Mutex<File>>>> = RwLock::new(HashMap::new());
-    }
+    static COVERAGE_FILE_LOCKS: Lazy<RwLock<HashMap<PathBuf, Arc<Mutex<File>>>>> =
+        Lazy::new(Default::default);
 
     {
         let locks = COVERAGE_FILE_LOCKS.read().unwrap();
