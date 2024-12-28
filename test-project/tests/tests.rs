@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "rustc", feature(rustc_private))]
+
 extern crate compiletest_rs as compiletest;
 
 use std::env;

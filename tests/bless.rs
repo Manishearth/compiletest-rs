@@ -1,5 +1,7 @@
 //! Tests for the `bless` option
 
+#![cfg_attr(feature = "rustc", feature(rustc_private))]
+
 extern crate compiletest_rs as compiletest;
 
 mod test_support;
