@@ -290,6 +290,10 @@ where
     if !lib_paths.as_ref().is_empty() {
         for p in env::split_paths(lib_paths.as_ref()) {
             let p = p.to_str().unwrap();
+            // Skip empty path, as otherwise we will just append "-L" without any path.
+            if p.is_empty() {
+                continue;
+            }
             assert!(!p.contains(' '), "spaces in paths not supported: {}", p);
             flags += " -L ";
             flags += p;
